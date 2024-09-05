@@ -1,11 +1,7 @@
-export interface Config {
-  baseDir: string;
-  refDirs: string[];
-}
+import * as path from 'path';
 
-export function loadConfig(): Config {
-  return {
-    baseDir: './mocks/input',
-    refDirs: ['components', 'paths', 'headers'],
-  };
-}
+export const config = {
+  schemaDirectory: path.resolve(__dirname, '../../mocks/input/schemas'),
+  outputDirectory: path.resolve(__dirname, '../../mocks/output/types'),
+  logLevel: process.env.LOG_LEVEL || 'info',
+};

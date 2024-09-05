@@ -1,23 +1,15 @@
-// src/cli/index.ts
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
+import { loadFiles } from '../core/fileLoader';
+import { generateTypeFiles } from '../core/typeGenerator';
+import { config } from '../config';
+import logger from '../shared/logger';
 
-export function parseCLIArgs() {
-  const argv = yargs(hideBin(process.argv))
-    .option('input', {
-      alias: 'i',
-      type: 'string',
-      description: 'Input OpenAPI YAML file',
-      demandOption: true,
-    })
-    .option('output', {
-      alias: 'o',
-      type: 'string',
-      description: 'Output directory for generated TypeScript files',
-      demandOption: true,
-    })
-    .help()
-    .parseSync();
-
-  return argv;
-}
+// CLI entry point
+export const runCLI = () => {
+  try {
+    const schemas = loadFiles(config.schemaDirectory);
+    generateTypeFiles(schemas);
+    logger.info('CLI executed successfully');
+  } catch (error) {
+    logger.error('Error executing CLI', error);
+  }
+};

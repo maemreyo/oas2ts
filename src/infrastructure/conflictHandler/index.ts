@@ -1,20 +1,14 @@
-// src/infrastructure/conflictHandler/index.ts
-export function detectNameConflict(
-  existingNames: string[],
-  newName: string,
-): boolean {
-  return existingNames.includes(newName);
-}
-
-export function resolveNameConflict(
-  existingNames: string[],
-  newName: string,
-): string {
+// Handle potential name conflicts by appending a unique suffix
+export const resolveConflict = (
+  name: string,
+  usedNames: Set<string>,
+): string => {
+  let newName = name;
   let counter = 1;
-  let resolvedName = newName;
-  while (existingNames.includes(resolvedName)) {
-    resolvedName = `${newName}${counter}`;
+  while (usedNames.has(newName)) {
+    newName = `${name}_${counter}`;
     counter++;
   }
-  return resolvedName;
-}
+  usedNames.add(newName);
+  return newName;
+};

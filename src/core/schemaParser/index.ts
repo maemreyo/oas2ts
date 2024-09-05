@@ -1,13 +1,19 @@
-export function parseSchema(schema: any): any {
-  return schema;
-}
+import * as yaml from 'js-yaml';
+import * as fs from 'fs';
+import logger from '../../shared/logger';
 
-export function handleSpecialTypes(schema: any): string {
-  if (schema.enum) {
-    return schema.enum.join(' | ');
+// Parse the schema from a YAML or JSON file
+export const parseSchema = (filePath: string): any => {
+  try {
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const schema =
+      filePath.endsWith('.yaml') || filePath.endsWith('.yml')
+        ? yaml.load(fileContent)
+        : JSON.parse(fileContent);
+    logger.info('Schema parsed successfully', filePath);
+    return schema;
+  } catch (error) {
+    logger.error('Error parsing schema from file', filePath, error);
+    throw new Error(`Failed to parse schema from ${filePath}`);
   }
-  if (schema.oneOf) {
-    return schema.oneOf.map(handleSpecialTypes).join(' | ');
-  }
-  return 'any';
-}
+};

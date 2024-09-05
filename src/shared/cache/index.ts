@@ -1,10 +1,11 @@
-// src/shared/cache/index.ts
-const cache: Record<string, any> = {};
+const cache: Map<string, unknown> = new Map();
 
-export function cacheFile(filePath: string, content: any) {
-  cache[filePath] = content;
-}
+// Get item from cache
+export const getFromCache = (key: string): unknown | undefined => {
+  return cache.get(key);
+};
 
-export function getCachedFile(filePath: string): any | null {
-  return cache[filePath] || null;
-}
+// Set item to cache
+export const setToCache = (key: string, value: unknown): void => {
+  cache.set(key, value);
+};

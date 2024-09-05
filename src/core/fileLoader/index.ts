@@ -1,34 +1,17 @@
-// @ts-nocheck
-import * as fs from 'fs-extra';
+import * as fs from 'fs';
+import * as path from 'path';
 import logger from '../../shared/logger';
-import yaml from 'js-yaml';
 
-export async function loadYamlFile(filePath: string): Promise<any> {
+// Load files from a directory with error handling
+export const loadFiles = (directory: string): string[] => {
   try {
-    const fileContents = await fs.readFile(filePath, 'utf8');
-    const parsedYaml = yaml.load(fileContents);
-
-    // Log all $ref to check for unwanted quotes
-    if (parsedYaml && typeof parsedYaml === 'object') {
-      Object.keys(parsedYaml).forEach((key) => {
-        if (parsedYaml[key]?.$ref) {
-          logger.info(`Parsed $ref: ${parsedYaml[key].$ref}`);
-        }
-      });
-    }
-    return parsedYaml;
+    const files = fs
+      .readdirSync(directory)
+      .map((file) => path.join(directory, file));
+    logger.info('Files loaded successfully from', directory);
+    return files;
   } catch (error) {
-    logger.error('Failed to load YAML file', { filePath, error });
-    throw error;
+    logger.error('Error loading files from directory', directory, error);
+    throw new Error(`Failed to load files from ${directory}`);
   }
-}
-
-export async function loadJsonFile(filePath: string): Promise<any> {
-  try {
-    const fileContents = await fs.readFile(filePath, 'utf8');
-    return JSON.parse(fileContents);
-  } catch (error) {
-    logger.error('Failed to load JSON file', { filePath, error });
-    throw error;
-  }
-}
+};
