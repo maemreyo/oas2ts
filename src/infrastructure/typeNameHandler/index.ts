@@ -1,5 +1,6 @@
 import * as path from 'path';
 import { capitalize, indentString, toCamelCase } from '../../utils/string';
+import config from '../../oas2ts.config';
 
 // Define a basic type for JSON Schema properties
 interface SchemaProperty {
@@ -69,7 +70,7 @@ const generateProperties = (
       const prop = properties[propName];
       const isRequired = required.includes(propName);
       const camelCasePropName = toCamelCase(propName);
-      const type = resolveType(prop, imports);
+      const type = resolveType(prop, propName, imports);
       return `${indentString(
         `${camelCasePropName}${isRequired ? '' : '?'}: ${type};`,
         indentLevel,
@@ -79,7 +80,12 @@ const generateProperties = (
 };
 
 // Resolve the type for a given schema property, including handling $ref and format
-const resolveType = (prop: SchemaProperty, imports: Set<string>): string => {
+const resolveType = (
+  prop: SchemaProperty,
+  propName: string, // Prop name để kiểm tra điều kiện trong config
+  imports: Set<string>,
+): string => {
+  // Check for $ref
   if (prop.$ref) {
     const refParts = prop.$ref.split('#');
     const filePath = refParts[0];
@@ -101,16 +107,14 @@ const resolveType = (prop: SchemaProperty, imports: Set<string>): string => {
     return refType || 'any';
   }
 
-  // Handle special formats
-  if (prop.format) {
-    switch (prop.format) {
-      case 'uuid':
-        imports.add(`import { UUID } from './base';`);
-        return 'UUID';
-      case 'date-time':
-        imports.add(`import { DateTime } from './base';`);
-        return 'DateTime';
-      // Add more formats as needed
+  // Handle special formats and base types based on config
+  for (const [baseType, condition] of Object.entries(config.baseType)) {
+    if (
+      prop.format === condition.format &&
+      condition.props.some((p: string) => propName.includes(p))
+    ) {
+      imports.add(`import { ${baseType} } from './base';`);
+      return baseType;
     }
   }
 
@@ -123,7 +127,11 @@ const resolveType = (prop: SchemaProperty, imports: Set<string>): string => {
     case 'boolean':
       return 'boolean';
     case 'array':
-      const itemType = resolveType(prop.items as SchemaProperty, imports);
+      const itemType = resolveType(
+        prop.items as SchemaProperty,
+        propName,
+        imports,
+      );
       return `${itemType}[]`;
     default:
       return 'any';

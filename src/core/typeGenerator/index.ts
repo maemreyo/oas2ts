@@ -2,23 +2,30 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseSchema } from '../schemaParser';
 import { generateTypesForSchema } from '../../infrastructure/typeNameHandler';
-import { config } from '../../config';
+import { config as appConfig } from '../../config';
 import logger from '../../shared/logger';
+import config from '../../oas2ts.config';
 import { toCamelCase } from '../../utils/string';
 
-const createBaseFileIfNotExists = () => {
-  const baseFilePath = path.join(config.outputDirectory, 'base.ts');
-  if (!fs.existsSync(baseFilePath)) {
-    const baseContent = `export type UUID = string;\nexport type DateTime = string;\n`;
-    fs.writeFileSync(baseFilePath, baseContent);
-    logger.info('base.ts file created with basic types.');
-  }
+// Function to generate the base.ts file dynamically
+const generateBaseFile = () => {
+  // Path to the output directory
+  const outputPath = path.join(appConfig.outputDirectory, 'base.ts');
+  let baseFileContent = '';
+
+  // Loop through each baseType in the config and generate type aliases
+  Object.entries(config.baseType).forEach(([typeName, { type }]) => {
+    baseFileContent += `export type ${typeName} = ${type};\n`;
+  });
+
+  // Write the generated content to base.ts
+  fs.writeFileSync(outputPath, baseFileContent);
+  console.log(`base.ts file generated with base types.`);
 };
 
 // Generate TypeScript types from schema files
 export const generateTypeFiles = (schemas: string[]): void => {
-  // Tạo base.ts nếu chưa tồn tại
-  createBaseFileIfNotExists();
+  generateBaseFile();
 
   schemas.forEach((schemaPath) => {
     try {
@@ -57,7 +64,7 @@ export const generateTypeFiles = (schemas: string[]): void => {
       const fileName = toCamelCase(schemaFileName) + '.ts';
 
       // Output file path
-      const outputPath = path.join(config.outputDirectory, fileName);
+      const outputPath = path.join(appConfig.outputDirectory, fileName);
 
       // Remove duplicate imports (ensured by using Set, but sorting)
       const importsString = Array.from(imports).sort().join('\n');
