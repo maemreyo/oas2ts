@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "build": "tsc && npm run copy-types",
     "copy-types": "copyfiles -u 1 src/types/index.d.ts dist/",
-    "dev": "tsx src/index.ts",
+    "dev": "tsc && node ./dist/index.js --input ./mocks/input/openapi.yaml --output ./mocks/output",
     "watch": "tsc --watch",
     "clean": "rm -rf dist",
     "prettier": "prettier --write '**/*.{js,ts,tsx,json,md}'",
