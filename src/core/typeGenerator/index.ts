@@ -6,8 +6,20 @@ import { config } from '../../config';
 import logger from '../../shared/logger';
 import { toCamelCase } from '../../utils/string';
 
+const createBaseFileIfNotExists = () => {
+  const baseFilePath = path.join(config.outputDirectory, 'base.ts');
+  if (!fs.existsSync(baseFilePath)) {
+    const baseContent = `export type UUID = string;\nexport type DateTime = string;\n`;
+    fs.writeFileSync(baseFilePath, baseContent);
+    logger.info('base.ts file created with basic types.');
+  }
+};
+
 // Generate TypeScript types from schema files
 export const generateTypeFiles = (schemas: string[]): void => {
+  // Tạo base.ts nếu chưa tồn tại
+  createBaseFileIfNotExists();
+
   schemas.forEach((schemaPath) => {
     try {
       // Read the schema file name (e.g., location.yaml -> location)
@@ -47,7 +59,7 @@ export const generateTypeFiles = (schemas: string[]): void => {
       // Output file path
       const outputPath = path.join(config.outputDirectory, fileName);
 
-      // Sorted string of imports
+      // Remove duplicate imports (ensured by using Set, but sorting)
       const importsString = Array.from(imports).sort().join('\n');
 
       // Combine imports and types into the final file content

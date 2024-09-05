@@ -4,6 +4,7 @@ import { capitalize, indentString, toCamelCase } from '../../utils/string';
 // Define a basic type for JSON Schema properties
 interface SchemaProperty {
   type?: string;
+  format?: string;
   properties?: Record<string, SchemaProperty>;
   required?: string[];
   enum?: string[];
@@ -77,7 +78,7 @@ const generateProperties = (
     .join('\n');
 };
 
-// Resolve the type for a given schema property, including handling $ref
+// Resolve the type for a given schema property, including handling $ref and format
 const resolveType = (prop: SchemaProperty, imports: Set<string>): string => {
   if (prop.$ref) {
     const refParts = prop.$ref.split('#');
@@ -98,6 +99,19 @@ const resolveType = (prop: SchemaProperty, imports: Set<string>): string => {
     }
 
     return refType || 'any';
+  }
+
+  // Handle special formats
+  if (prop.format) {
+    switch (prop.format) {
+      case 'uuid':
+        imports.add(`import { UUID } from './base';`);
+        return 'UUID';
+      case 'date-time':
+        imports.add(`import { DateTime } from './base';`);
+        return 'DateTime';
+      // Add more formats as needed
+    }
   }
 
   // Handle basic types
