@@ -1,5 +1,6 @@
-import { loadFile } from '../fileLoader';
+import { loadYamlFile } from '../fileLoader';
 import { findRefFile } from '../../infrastructure/fileNameHandler';
+import logger from '../../shared/logger';
 
 export async function resolveRefs(
   data: any,
@@ -13,14 +14,24 @@ export async function resolveRefs(
     return Promise.all(data.map((item) => resolveRefs(item, config)));
   }
 
-  if (data.$ref) {
-    const refFile = await findRefFile(data.$ref, config);
+  if (data.$ref && typeof data.$ref === 'string') {
+    const refPath = sanitizeRef(data.$ref);
+    logger.info(`Using sanitized $ref: ${refPath}`);
+
+    const refFile = await findRefFile(refPath, config);
+
     if (!refFile) {
-      throw new Error(`Cannot find referenced file for ${data.$ref}`);
+      logger.warn('Cannot find referenced file', { ref: refPath });
+      return null;
     }
 
-    const refYaml = await loadFile(refFile);
-    return resolveRefs(refYaml, config);
+    // Đảm bảo rằng refFile là một string và không phải là object đã parse
+    if (typeof refFile === 'string') {
+      const refYaml = await loadYamlFile(refFile); // Chỉ gọi loadYamlFile nếu refFile là chuỗi
+      logger.info('Resolved $ref YAML content', { refYaml });
+
+      return resolveRefs(refYaml, config); // Đệ quy để xử lý các $ref lồng nhau
+    }
   }
 
   const resolvedObject: any = {};
@@ -29,4 +40,12 @@ export async function resolveRefs(
   }
 
   return resolvedObject;
+}
+
+function sanitizeRef(ref: string): string {
+  let sanitizedRef = ref;
+  while (sanitizedRef.startsWith('"') && sanitizedRef.endsWith('"')) {
+    sanitizedRef = sanitizedRef.slice(1, -1);
+  }
+  return sanitizedRef;
 }

@@ -1,36 +1,36 @@
 // src/index.ts
 import { loadConfig } from './config';
-import { loadFile } from './core/fileLoader';
 import { resolveRefs } from './core/refResolver';
 import { generateTypeScriptFiles } from './core/typeGenerator';
-import { handleError } from './shared/errorHandler';
-import { logInfo } from './shared/logger';
+import logger from './shared/logger';
 import { parseCLIArgs } from './cli';
+import { loadYamlFile } from './core/fileLoader';
 
 async function processOpenApiFile(openApiFilePath: string, outputDir: string) {
   const config = loadConfig();
   try {
-    const openApiData = await loadFile(openApiFilePath);
+    const openApiData = await loadYamlFile(openApiFilePath);
     const resolvedOpenApiData = await resolveRefs(openApiData, config);
     await generateTypeScriptFiles(resolvedOpenApiData, outputDir);
-    logInfo('Typescript files generated successfully!');
+    logger.info('Typescript files generated successfully!');
   } catch (error) {
     if (error instanceof Error) {
-      handleError(error);
+      logger.error(error);
     } else {
-      handleError(new Error(String(error)));
+      logger.error(new Error(String(error)));
     }
   }
 }
 
+// Get CLI arguments
 const argv = parseCLIArgs();
 
 processOpenApiFile(argv.input, argv.output)
-  .then(() => logInfo('Process completed'))
+  .then(() => logger.info('Process completed'))
   .catch((error) => {
     if (error instanceof Error) {
-      handleError(error);
+      logger.error(error);
     } else {
-      handleError(new Error(String(error)));
+      logger.error(new Error(String(error)));
     }
   });

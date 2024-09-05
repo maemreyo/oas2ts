@@ -6,7 +6,7 @@ class ConsoleTransport {
         const contextString = context
             ? ` | Context: ${JSON.stringify(context)}`
             : '';
-        const logMessage = `[${level.toUpperCase()}]: ${messages.join(' ')}${contextString}`;
+        const logMessage = `[${level.toUpperCase()}]: ${messages.map((msg) => (typeof msg === 'object' ? JSON.stringify(msg) : msg)).join(' ')}${contextString}`;
         switch (level) {
             case 'info':
                 console.info(`ℹ️`, logMessage);

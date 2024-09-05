@@ -5,7 +5,7 @@ export interface Config {
 
 export function loadConfig(): Config {
   return {
-    baseDir: './project-root',
-    refDirs: ['components', 'paths'],
+    baseDir: './mocks/input',
+    refDirs: ['components', 'paths', 'headers'],
   };
 }
