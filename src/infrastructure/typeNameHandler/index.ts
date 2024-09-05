@@ -1,44 +1,54 @@
 import * as path from 'path';
+import { capitalize, indentString, toCamelCase } from '../../utils/string';
 
-// Hàm sinh types cho một schema
+// Define a basic type for JSON Schema properties
+interface SchemaProperty {
+  type?: string;
+  properties?: Record<string, SchemaProperty>;
+  required?: string[];
+  enum?: string[];
+  $ref?: string;
+  items?: SchemaProperty;
+  description?: string;
+}
+
+// Generate types for a given schema
 export const generateTypesForSchema = (
   schemaName: string,
-  schema: any,
-  imports: Set<string>, // Nhận Set imports từ bên ngoài để tích lũy
-  fileName: string, // Nhận thêm tên file để dùng làm tên interface nếu không có tên rõ ràng
+  schema: SchemaProperty,
+  imports: Set<string>, // Accumulate imports from outside
+  fileName: string, // File name to be used if no schema name is provided
 ): string => {
   let typeDefinitions = '';
 
-  // Nếu là object với các properties
+  // If the schema is an object with properties
   if (schema.type === 'object' && schema.properties) {
     const properties = generateProperties(
       schema.properties,
       schema.required || [],
-      2, // Mức indent (2 khoảng trắng)
-      imports, // Truyền Set imports để theo dõi các $ref
+      2, // Indentation level (2 spaces)
+      imports, // Pass along the imports set to track $ref
     );
 
-    // Sử dụng tên schema nếu có, nếu không sử dụng tên file
+    // Use schema name or fallback to the file name
     const interfaceName = schemaName
       ? capitalize(schemaName)
       : capitalize(fileName);
     typeDefinitions += `export interface ${interfaceName} {\n${properties}\n}\n`;
   }
 
-  // Nếu là enum (chuỗi với danh sách enum)
+  // If the schema is an enum (a string with a list of enum values)
   if (schema.type === 'string' && schema.enum) {
     const enumValues = schema.enum
       .map((val: string) => `${' '.repeat(2)}${capitalize(val)} = '${val}'`)
       .join(',\n');
 
-    // Sử dụng tên schema nếu có, nếu không sử dụng tên file
     const enumName = schemaName ? capitalize(schemaName) : capitalize(fileName);
     typeDefinitions += `export enum ${enumName} {\n${enumValues}\n}\n`;
   }
 
-  // Nếu không có properties hoặc type cụ thể
+  // If the schema does not have specific properties or type
   if (!schema.type && schema.description) {
-    // Sử dụng tên file như một loại type
     const typeName = schemaName ? capitalize(schemaName) : capitalize(fileName);
     typeDefinitions += `// ${schema.description}\nexport type ${typeName} = unknown;\n`;
   }
@@ -46,20 +56,9 @@ export const generateTypesForSchema = (
   return typeDefinitions;
 };
 
-// Hàm capitalize chữ cái đầu tiên
-const capitalize = (str: string): string => {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
-// Hàm thêm indent (khoảng trắng hoặc tab) vào chuỗi
-const indentString = (str: string, indentLevel: number): string => {
-  const indent = ' '.repeat(indentLevel);
-  return indent + str;
-};
-
-// Hàm sinh properties cho interface với indent và xử lý $ref
+// Generate properties for an interface, including indent and handling $ref
 const generateProperties = (
-  properties: any,
+  properties: Record<string, SchemaProperty>,
   required: string[],
   indentLevel: number,
   imports: Set<string>,
@@ -68,62 +67,51 @@ const generateProperties = (
     .map((propName) => {
       const prop = properties[propName];
       const isRequired = required.includes(propName);
-      const camelCasePropName = toCamelCase(propName); // Chuyển propName sang camelCase
-      const type = resolveType(prop, imports); // Chuyển thêm imports
-      return `${indentString(`${camelCasePropName}${isRequired ? '' : '?'}: ${type};`, indentLevel)}`;
+      const camelCasePropName = toCamelCase(propName);
+      const type = resolveType(prop, imports);
+      return `${indentString(
+        `${camelCasePropName}${isRequired ? '' : '?'}: ${type};`,
+        indentLevel,
+      )}`;
     })
     .join('\n');
 };
-// Hàm giải quyết kiểu dữ liệu cho từng thuộc tính, bao gồm $ref
-const resolveType = (prop: any, imports: Set<string>): string => {
-  // Nếu thuộc tính là tham chiếu đến một schema khác ($ref)
+
+// Resolve the type for a given schema property, including handling $ref
+const resolveType = (prop: SchemaProperty, imports: Set<string>): string => {
   if (prop.$ref) {
     const refParts = prop.$ref.split('#');
-    const filePath = refParts[0]; // Đường dẫn file từ $ref
-    const refType = refParts[1] ? refParts[1].replace('/', '') : ''; // Phần định nghĩa sau dấu #
+    const filePath = refParts[0];
+    const refType = refParts[1] ? refParts[1].replace('/', '') : '';
 
     if (filePath) {
-      // Tạo tên file camelCase từ đường dẫn
       const importFileName = toCamelCase(
         path.basename(filePath, path.extname(filePath)),
       );
-
-      // Nếu không có refType, ta sử dụng tên file như là type mặc định
       const typeName = refType || capitalize(importFileName);
       const importPath = `./${importFileName}`;
 
-      // Thêm dòng import vào Set (tránh trùng lặp)
+      // Avoid duplicate imports
       imports.add(`import { ${typeName} } from '${importPath}';`);
 
-      // Trả về tên type được tham chiếu
       return typeName;
     }
 
     return refType || 'any';
   }
 
-  // Các kiểu dữ liệu cơ bản
-  if (prop.type === 'string') {
-    return 'string';
+  // Handle basic types
+  switch (prop.type) {
+    case 'string':
+      return 'string';
+    case 'integer':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
+    case 'array':
+      const itemType = resolveType(prop.items as SchemaProperty, imports);
+      return `${itemType}[]`;
+    default:
+      return 'any';
   }
-  if (prop.type === 'integer') {
-    return 'number';
-  }
-  if (prop.type === 'boolean') {
-    return 'boolean';
-  }
-  if (prop.type === 'array') {
-    const itemType = resolveType(prop.items, imports); // Truyền imports để tiếp tục xử lý array items
-    return `${itemType}[]`;
-  }
-
-  // Nếu không xác định được kiểu
-  return 'any';
-};
-
-// Chuyển đổi tên sang dạng camelCase
-const toCamelCase = (str: string): string => {
-  return str.replace(/([-_][a-z])/g, (group) =>
-    group.toUpperCase().replace('-', '').replace('_', ''),
-  );
 };
