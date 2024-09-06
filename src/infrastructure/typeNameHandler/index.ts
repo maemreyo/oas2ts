@@ -1,5 +1,10 @@
 import * as path from 'path';
-import { capitalize, indentString, toCamelCase } from '../../utils/string';
+import {
+  capitalize,
+  indentString,
+  toCamelCase,
+  toPascalCase,
+} from '../../utils/string';
 import config from '../../oas2ts.config';
 
 // Define a basic type for JSON Schema properties
@@ -42,7 +47,7 @@ export const generateTypesForSchema = (
   // If the schema is an enum (a string with a list of enum values)
   if (schema.type === 'string' && schema.enum) {
     const enumValues = schema.enum
-      .map((val: string) => `${' '.repeat(2)}${capitalize(val)} = '${val}'`)
+      .map((val: string) => `${' '.repeat(2)}${toPascalCase(val)} = '${val}'`) // Convert each value to PascalCase
       .join(',\n');
 
     const enumName = schemaName ? capitalize(schemaName) : capitalize(fileName);
@@ -82,7 +87,7 @@ const generateProperties = (
 // Resolve the type for a given schema property, including handling $ref and format
 const resolveType = (
   prop: SchemaProperty,
-  propName: string, // Prop name để kiểm tra điều kiện trong config
+  propName: string, // Prop name to check conditions from config
   imports: Set<string>,
 ): string => {
   // Check for $ref
@@ -115,6 +120,15 @@ const resolveType = (
     ) {
       imports.add(`import { ${baseType} } from './base';`);
       return baseType;
+    }
+  }
+
+  // Handle known formats
+  if (prop.type === 'number') {
+    switch (prop.format) {
+      case 'float':
+      case 'double':
+        return 'number'; // Map double and float to number in TypeScript
     }
   }
 
