@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseSchema } from '../schemaParser';
-import { generateTypesForSchema } from '../../infrastructure/typeNameHandler';
 import { config as appConfig } from '../../config';
 import logger from '../../shared/logger';
 import config from '../../oas2ts.config';
 import { toCamelCase } from '../../utils/string';
+import { generateTypesForSchema } from '../../infrastructure/typeNameHandler/schemaTypeGenerator';
 
 // Function to generate the base.ts file dynamically
 const generateBaseFile = () => {
