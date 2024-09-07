@@ -26,22 +26,28 @@ export const resolveType = (
   propName: string,
   imports: Set<string>,
 ): string => {
-  // Handle $ref (external references)
-  if ('$ref' in prop) {
-    return resolveRefType(prop, imports);
+  try {
+    console.log(`Resolving type for property: ${propName}`);
+    // Handle $ref (external references)
+    if ('$ref' in prop) {
+      return resolveRefType(prop, imports);
+    }
+
+    // Handle baseType from config (UUID, ISODate, etc.)
+    const baseType = resolveBaseType(prop, propName, imports);
+    if (baseType) return baseType;
+
+    // Handle known number formats (float, double)
+    if (prop.type === SchemaTypes.NUMBER) {
+      return resolveNumberFormat(prop);
+    }
+
+    // Handle basic types (string, integer, boolean, array)
+    return resolveBasicTypes(prop, propName, imports);
+  } catch (error) {
+    console.error(`Error resolving type for property ${propName}`, error);
+    throw error;
   }
-
-  // Handle baseType from config (UUID, ISODate, etc.)
-  const baseType = resolveBaseType(prop, propName, imports);
-  if (baseType) return baseType;
-
-  // Handle known number formats (float, double)
-  if (prop.type === SchemaTypes.NUMBER) {
-    return resolveNumberFormat(prop);
-  }
-
-  // Handle basic types (string, integer, boolean, array)
-  return resolveBasicTypes(prop, propName, imports);
 };
 
 /**
@@ -51,10 +57,13 @@ export const resolveType = (
  * @param imports - A set used to collect import statements for referenced types.
  * @returns The resolved TypeScript type from `$ref` or DEFAULT_TYPE if not found.
  */
-const resolveRefType = (prop: SchemaProperty, imports: Set<string>): string => {
+export const resolveRefType = (
+  prop: SchemaProperty,
+  imports: Set<string>,
+): string => {
   if (isReferenceProperty(prop)) {
     const refParts = prop.$ref.split('#');
-    const filePath = refParts[0];
+    const filePath = refParts[0]; // Path to the file with the definition
     const refType = refParts[1] ? refParts[1].replace('/', '') : '';
 
     if (filePath) {
@@ -62,17 +71,17 @@ const resolveRefType = (prop: SchemaProperty, imports: Set<string>): string => {
         path.basename(filePath, path.extname(filePath)),
       );
       const typeName = refType || capitalize(importFileName);
-      const importPath = `${BASE_PATH}${importFileName}`;
+      const importPath = `./${importFileName}`;
 
-      // Add import statement to avoid duplicates
-      imports.add(generateImportStatement(typeName, importPath));
+      // Add the import statement to avoid duplicates
+      imports.add(`import { ${typeName} } from '${importPath}';`);
       return typeName;
     }
 
     return refType || DEFAULT_TYPE;
   }
 
-  return DEFAULT_TYPE; // Default return if not a reference type
+  return DEFAULT_TYPE;
 };
 
 /**

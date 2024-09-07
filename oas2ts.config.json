@@ -1,0 +1,16 @@
+{
+  "schemaDirectory": "./mocks/input/schemas",
+  "outputDirectory": "./mocks/output/types",
+  "baseType": {
+    "UUID": {
+      "type": "string",
+      "format": "uuid",
+      "props": ["id"]
+    },
+    "ISODate": {
+      "type": "string",
+      "format": "date-time",
+      "props": ["at", "created", "updated", "time"]
+    }
+  }
+}
