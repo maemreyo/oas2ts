@@ -1,6 +1,7 @@
 import { SchemaProperty, ObjectProperty } from './types';
 import { resolveType } from './typeResolver';
 import { toCamelCase, indentString } from '../../utils/string';
+import logger from '../../utils/logger';
 
 export const generateProperties = (
   properties: Record<string, SchemaProperty>,
@@ -9,7 +10,7 @@ export const generateProperties = (
   imports: Set<string>,
 ): string => {
   try {
-    console.log(
+    logger.info(
       `Generating properties for object with ${Object.keys(properties).length} properties`,
     );
     return Object.keys(properties)

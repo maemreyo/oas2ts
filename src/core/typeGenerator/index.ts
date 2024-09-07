@@ -30,8 +30,8 @@ import { SchemaTypes } from '../../utils/enums';
  */
 const writeFile = async (filePath: string, content: string): Promise<void> => {
   try {
-    console.log(`Writing file to: ${filePath}`);
-    console.log(`File content:\n${content}`);
+    logger.info(`Writing file to: ${filePath}`);
+    logger.info(`File content:\n${content}`);
     await fs.writeFile(filePath, content);
     logger.info(`File written successfully: ${filePath}`);
   } catch (error) {

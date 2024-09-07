@@ -11,6 +11,7 @@ import {
 import { generateImportStatement } from '../../utils/importHelpers';
 import { generateArrayType } from '../../utils/typeHelpers';
 import { SchemaFormats, SchemaTypes } from '../../utils/enums';
+import logger from '../../utils/logger';
 
 /**
  * Resolves the TypeScript type for a given schema property.
@@ -27,7 +28,7 @@ export const resolveType = (
   imports: Set<string>,
 ): string => {
   try {
-    console.log(`Resolving type for property: ${propName}`);
+    logger.info(`Resolving type for property: ${propName}`);
     // Handle $ref (external references)
     if ('$ref' in prop) {
       return resolveRefType(prop, imports);
