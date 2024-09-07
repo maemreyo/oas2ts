@@ -26,210 +26,128 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateTypeScriptFiles = exports.generateTypeScriptInterface = void 0;
-// @ts-nocheck
+exports.generateTypeFiles = void 0;
+const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
-const fs = __importStar(require("fs-extra"));
-const js_yaml_1 = __importDefault(require("js-yaml"));
-const namingConvention_1 = require("../../shared/namingConvention");
-const fileNameHandler_1 = require("../../infrastructure/fileNameHandler");
 const schemaParser_1 = require("../schemaParser");
+const config_1 = require("../../config");
 const logger_1 = __importDefault(require("../../shared/logger"));
-const refResolver_1 = require("../refResolver");
-function generateTypeScriptInterface(schemaName, properties) {
-    logger_1.default.info('Generating TypeScript interface...', { schemaName });
-    const lines = Object.keys(properties).map((propName) => {
-        const prop = properties[propName];
-        const tsType = (0, schemaParser_1.handleSpecialTypes)(prop) || 'any';
-        const requiredFlag = prop.required ? '' : '?';
-        logger_1.default.info('Processed property for interface', {
-            propName,
-            tsType,
-            requiredFlag,
-        });
-        return `  ${(0, namingConvention_1.applyPropertyNamingConvention)(propName)}${requiredFlag}: ${tsType};`;
+const oas2ts_config_1 = __importDefault(require("../../oas2ts.config"));
+const string_1 = require("../../utils/string");
+const schemaTypeGenerator_1 = require("../../infrastructure/typeNameHandler/schemaTypeGenerator");
+const constants_1 = require("../../utils/constants");
+const enums_1 = require("../../utils/enums");
+/**
+ * Asynchronously writes content to a file.
+ *
+ * @param filePath - The path where the file will be created.
+ * @param content - The content to write into the file.
+ * @returns A promise that resolves when the file is successfully written.
+ *
+ * @example
+ * ```typescript
+ * await writeFile('/path/to/file.ts', 'const a = 1;');
+ * ```
+ */
+const writeFile = async (filePath, content) => {
+    try {
+        await fs.writeFile(filePath, content);
+        logger_1.default.info(`File written successfully: ${filePath}`);
+    }
+    catch (error) {
+        logger_1.default.error(`Error writing file ${filePath}`, error);
+    }
+};
+/**
+ * Dynamically generates the `base.ts` file based on the configuration.
+ *
+ * Loops through all base types defined in the `oas2ts.config` file and generates
+ * corresponding type aliases in the `base.ts` file.
+ *
+ * @returns A promise that resolves when the `base.ts` file is successfully written.
+ *
+ * @example
+ * ```typescript
+ * await generateBaseFile();
+ * ```
+ */
+const generateBaseFile = async () => {
+    const outputPath = path.join(config_1.config.outputDirectory, constants_1.BASE_FILE_NAME);
+    let baseFileContent = '';
+    // Loop through each baseType in the config and generate type aliases
+    Object.entries(oas2ts_config_1.default.baseType).forEach(([typeName, { type }]) => {
+        baseFileContent += constants_1.TYPE_ALIAS_TEMPLATE.replace('${typeName}', typeName).replace('${type}', type);
     });
-    const interfaceName = (0, namingConvention_1.applyInterfaceNamingConvention)(schemaName);
-    logger_1.default.info('Generated interface name:', { interfaceName });
-    return `export interface ${interfaceName} {\n${lines.join('\n')}\n}`;
-}
-exports.generateTypeScriptInterface = generateTypeScriptInterface;
-async function generateTypeScriptFiles(resolvedData, outputDir) {
-    logger_1.default.info('Starting to process resolved data...');
-    // Kiểm tra nếu resolvedData là chuỗi JSON hoặc YAML
-    if (typeof resolvedData === 'string') {
-        logger_1.default.info('Resolved data is a string, attempting to parse as JSON or YAML');
-        try {
-            // Thử parse nếu là JSON
-            resolvedData = JSON.parse(resolvedData);
-            logger_1.default.info('Resolved data parsed as JSON:', { resolvedData });
+    // Write the generated content to base.ts
+    await writeFile(outputPath, baseFileContent);
+    logger_1.default.info(constants_1.BASE_FILE_GENERATED_MESSAGE);
+};
+/**
+ * Processes a single schema file, parses it, and generates the corresponding TypeScript types.
+ *
+ * For each schema, it generates types and interfaces and writes them to a `.ts` file.
+ * It also handles imports and ensures that they are correctly formatted and deduplicated.
+ *
+ * @param schemaPath - The path to the schema file to be processed.
+ * @returns A promise that resolves when the schema file has been successfully processed.
+ *
+ * @example
+ * ```typescript
+ * await processSchemaFile('/path/to/schema.yaml');
+ * ```
+ */
+const processSchemaFile = async (schemaPath) => {
+    try {
+        const schemaFileName = path.basename(schemaPath, path.extname(schemaPath));
+        const parsedSchema = (0, schemaParser_1.parseSchema)(schemaPath);
+        let typesContent = '';
+        const imports = new Set(); // Set to store import lines
+        // Handle cases where parsedSchema is empty or a general object
+        if (Object.keys(parsedSchema).length === 0 ||
+            parsedSchema.type === enums_1.SchemaTypes.OBJECT) {
+            parsedSchema[schemaFileName] = parsedSchema;
         }
-        catch (jsonError) {
-            logger_1.default.warn('Failed to parse as JSON, trying YAML', { jsonError });
-            try {
-                // Nếu không thành công, thử parse như YAML
-                resolvedData = js_yaml_1.default.load(resolvedData);
-                logger_1.default.info('Resolved data parsed as YAML:', { resolvedData });
-            }
-            catch (yamlError) {
-                logger_1.default.error('Failed to parse resolvedData as JSON or YAML', {
-                    jsonError,
-                    yamlError,
-                });
-                return; // Thoát nếu không parse được
-            }
-        }
-    }
-    else {
-        logger_1.default.info('Resolved data is not a string, continuing with object data...');
-    }
-    // Xử lý components schemas
-    if (resolvedData.components && resolvedData.components.schemas) {
-        logger_1.default.info('Found schemas in components:', {
-            schemas: resolvedData.components.schemas,
+        // Generate types for each schema in the file
+        Object.keys(parsedSchema).forEach((schemaName) => {
+            const schema = parsedSchema[schemaName];
+            const types = (0, schemaTypeGenerator_1.generateTypesForSchema)(schemaName, schema, imports, schemaFileName);
+            typesContent += `${types}\n`; // Combine all types into one file
         });
-        for (const schemaName in resolvedData.components.schemas) {
-            const schema = resolvedData.components.schemas[schemaName];
-            const properties = schema.properties || {};
-            logger_1.default.info(`Processing schema: ${schemaName}`, { properties });
-            const tsInterface = generateTypeScriptInterface(schemaName, properties);
-            logger_1.default.info({ tsInterface });
-            const outputFilePath = path.join(outputDir, (0, fileNameHandler_1.generateOutputFileName)(schemaName));
-            try {
-                await fs.writeFile(outputFilePath, tsInterface, 'utf8');
-                logger_1.default.info('Generated TypeScript interface', {
-                    schemaName,
-                    outputFilePath,
-                });
-            }
-            catch (writeError) {
-                logger_1.default.error('Error writing TypeScript file', {
-                    schemaName,
-                    outputFilePath,
-                    error: writeError,
-                });
-            }
-        }
+        // Generate the output file name (e.g., location.yaml -> location.ts)
+        const fileName = `${(0, string_1.toCamelCase)(schemaFileName)}.ts`;
+        // Output file path
+        const outputPath = path.join(config_1.config.outputDirectory, fileName);
+        // Remove duplicate imports (ensured by using Set, but sorting)
+        const importsString = Array.from(imports).sort().join('\n');
+        // Combine imports and types into the final file content
+        const finalContent = `${importsString}${constants_1.IMPORTS_AND_TYPES_SEPARATOR}${typesContent}`;
+        // Write all types and interfaces to the output file
+        await writeFile(outputPath, finalContent);
+        logger_1.default.info(`${constants_1.FILE_GENERATED_SUCCESSFULLY}: ${schemaFileName} -> ${fileName}`);
     }
-    else {
-        logger_1.default.warn('No schemas found in components.');
+    catch (error) {
+        // Log the error but continue processing the next schema
+        logger_1.default.error(`${constants_1.ERROR_GENERATING_TYPES} ${schemaPath}`, error);
     }
-    // Xử lý các path refs
-    if (resolvedData.paths) {
-        logger_1.default.info('Found paths in OpenAPI:', { paths: resolvedData.paths });
-        for (const pathName in resolvedData.paths) {
-            logger_1.default.info(`Processing path: ${pathName}`);
-            const pathData = resolvedData.paths[pathName];
-            const resolvedPathData = await (0, refResolver_1.resolveRefs)(pathData, {
-                baseDir: outputDir,
-                refDirs: ['paths', 'components'],
-            });
-            logger_1.default.info(`Processed path: ${pathName}`, { resolvedPathData });
-            logger_1.default.info('REQUESTBODY??', !!resolvedPathData &&
-                !!resolvedPathData.requestBody &&
-                !!resolvedPathData.requestBody.content);
-            // Xử lý requestBody nếu có
-            if (
-            // resolvedPathData &&
-            // resolvedPathData.requestBody &&
-            // resolvedPathData.requestBody.content
-            true) {
-                for (const contentType in resolvedPathData.requestBody.content) {
-                    logger_1.default.info({ contentType });
-                    const contentSchema = resolvedPathData.requestBody.content[contentType].schema;
-                    logger_1.default.info({ contentSchema });
-                    if (contentSchema && contentSchema.properties) {
-                        const interfaceName = `${pathName.replace(/[\/{}]/g, '_')}RequestBody`;
-                        logger_1.default.info({ interfaceName });
-                        const tsInterface = generateTypeScriptInterface(interfaceName, contentSchema.properties);
-                        logger_1.default.info({ tsInterface });
-                        const outputFilePath = path.join(outputDir, (0, fileNameHandler_1.generateOutputFileName)(interfaceName));
-                        logger_1.default.info(`Attempting to write requestBody interface for path: ${pathName}`, { interfaceName, outputFilePath });
-                        try {
-                            await fs.writeFile(outputFilePath, tsInterface, 'utf8');
-                            logger_1.default.info('Generated TypeScript interface for requestBody', {
-                                interfaceName,
-                                outputFilePath,
-                            });
-                        }
-                        catch (writeError) {
-                            logger_1.default.error('Error writing TypeScript file for requestBody', {
-                                interfaceName,
-                                outputFilePath,
-                                error: writeError,
-                            });
-                        }
-                    }
-                }
-            }
-            // Xử lý responses nếu có
-            if (resolvedPathData && resolvedPathData.responses) {
-                logger_1.default.info('Found responses for the path', { pathName });
-                for (const statusCode in resolvedPathData.responses) {
-                    const responseSchema = resolvedPathData.responses[statusCode].content?.['application/json']
-                        ?.schema;
-                    if (responseSchema && responseSchema.properties) {
-                        const interfaceName = `${pathName.replace(/[\/{}]/g, '_')}_Response_${statusCode}`;
-                        const tsInterface = generateTypeScriptInterface(interfaceName, responseSchema.properties);
-                        const outputFilePath = path.join(outputDir, (0, fileNameHandler_1.generateOutputFileName)(interfaceName));
-                        logger_1.default.info(`Attempting to write response interface for path: ${pathName}, status code: ${statusCode}`, { interfaceName, outputFilePath });
-                        try {
-                            await fs.writeFile(outputFilePath, tsInterface, 'utf8');
-                            logger_1.default.info('Generated TypeScript interface for response', {
-                                interfaceName,
-                                outputFilePath,
-                            });
-                        }
-                        catch (writeError) {
-                            logger_1.default.error('Error writing TypeScript file for response', {
-                                interfaceName,
-                                outputFilePath,
-                                error: writeError,
-                            });
-                        }
-                    }
-                }
-            }
-            else {
-                logger_1.default.info('No responses found for the path', { pathName });
-            }
-            // Xử lý parameters nếu có
-            if (resolvedPathData && resolvedPathData.parameters) {
-                logger_1.default.info('Found parameters for the path', { pathName });
-                const paramsInterfaceName = `${pathName.replace(/[\/{}]/g, '_')}Parameters`;
-                const paramsProperties = {};
-                resolvedPathData.parameters.forEach((param) => {
-                    if (param.schema) {
-                        paramsProperties[param.name] = param.schema;
-                    }
-                });
-                if (Object.keys(paramsProperties).length > 0) {
-                    const tsInterface = generateTypeScriptInterface(paramsInterfaceName, paramsProperties);
-                    const outputFilePath = path.join(outputDir, (0, fileNameHandler_1.generateOutputFileName)(paramsInterfaceName));
-                    logger_1.default.info(`Attempting to write parameters interface for path: ${pathName}`, { paramsInterfaceName, outputFilePath });
-                    try {
-                        await fs.writeFile(outputFilePath, tsInterface, 'utf8');
-                        logger_1.default.info('Generated TypeScript interface for parameters', {
-                            paramsInterfaceName,
-                            outputFilePath,
-                        });
-                    }
-                    catch (writeError) {
-                        logger_1.default.error('Error writing TypeScript file for parameters', {
-                            paramsInterfaceName,
-                            outputFilePath,
-                            error: writeError,
-                        });
-                    }
-                }
-            }
-            else {
-                logger_1.default.info('No parameters found for the path', { pathName });
-            }
-        }
-    }
-    else {
-        logger_1.default.warn('No paths found in OpenAPI specification.');
-    }
-}
-exports.generateTypeScriptFiles = generateTypeScriptFiles;
+};
+/**
+ * Generates TypeScript types from an array of schema files.
+ *
+ * This function first generates a `base.ts` file and then processes each schema file
+ * in parallel. For each schema, it generates TypeScript types and interfaces and writes
+ * them to separate `.ts` files.
+ *
+ * @param schemas - Array of schema file paths to be processed.
+ * @returns A promise that resolves when all schema files have been successfully processed.
+ *
+ * @example
+ * ```typescript
+ * await generateTypeFiles(['/path/to/schema1.yaml', '/path/to/schema2.yaml']);
+ * ```
+ */
+const generateTypeFiles = async (schemas) => {
+    await generateBaseFile();
+    // Process each schema file asynchronously
+    await Promise.all(schemas.map((schemaPath) => processSchemaFile(schemaPath)));
+};
+exports.generateTypeFiles = generateTypeFiles;

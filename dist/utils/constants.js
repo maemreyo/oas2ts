@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.IMPORTS_AND_TYPES_SEPARATOR = exports.ERROR_GENERATING_TYPES = exports.FILE_GENERATED_SUCCESSFULLY = exports.TYPE_ALIAS_TEMPLATE = exports.BASE_FILE_GENERATED_MESSAGE = exports.BASE_FILE_NAME = exports.BASE_IMPORT_PATH = exports.BASE_PATH = exports.DEFAULT_TYPE = void 0;
+exports.DEFAULT_TYPE = 'any';
+exports.BASE_PATH = './';
+exports.BASE_IMPORT_PATH = './base';
+exports.BASE_FILE_NAME = 'base.ts';
+exports.BASE_FILE_GENERATED_MESSAGE = 'base.ts file generated with base types.';
+exports.TYPE_ALIAS_TEMPLATE = 'export type ${typeName} = ${type};\n';
+exports.FILE_GENERATED_SUCCESSFULLY = 'Types generated successfully for schema file';
+exports.ERROR_GENERATING_TYPES = 'Error generating types for schema';
+exports.IMPORTS_AND_TYPES_SEPARATOR = '\n\n';

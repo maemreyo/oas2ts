@@ -1,17 +1,48 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleSpecialTypes = exports.parseSchema = void 0;
-function parseSchema(schema) {
-    return schema;
-}
+exports.parseSchema = void 0;
+const yaml = __importStar(require("js-yaml"));
+const fs = __importStar(require("fs"));
+const logger_1 = __importDefault(require("../../shared/logger"));
+// Parse the schema from a YAML or JSON file
+const parseSchema = (filePath) => {
+    try {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const schema = filePath.endsWith('.yaml') || filePath.endsWith('.yml')
+            ? yaml.load(fileContent)
+            : JSON.parse(fileContent);
+        logger_1.default.info('Schema parsed successfully', filePath);
+        return schema;
+    }
+    catch (error) {
+        logger_1.default.error('Error parsing schema from file', filePath, error);
+        throw new Error(`Failed to parse schema from ${filePath}`);
+    }
+};
 exports.parseSchema = parseSchema;
-function handleSpecialTypes(schema) {
-    if (schema.enum) {
-        return schema.enum.join(' | ');
-    }
-    if (schema.oneOf) {
-        return schema.oneOf.map(handleSpecialTypes).join(' | ');
-    }
-    return 'any';
-}
-exports.handleSpecialTypes = handleSpecialTypes;

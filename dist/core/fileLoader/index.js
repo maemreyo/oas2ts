@@ -26,39 +26,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadJsonFile = exports.loadYamlFile = void 0;
-// @ts-nocheck
-const fs = __importStar(require("fs-extra"));
+exports.loadFiles = void 0;
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const logger_1 = __importDefault(require("../../shared/logger"));
-const js_yaml_1 = __importDefault(require("js-yaml"));
-async function loadYamlFile(filePath) {
+// Load files from a directory with error handling
+const loadFiles = (directory) => {
     try {
-        const fileContents = await fs.readFile(filePath, 'utf8');
-        const parsedYaml = js_yaml_1.default.load(fileContents);
-        // Log all $ref to check for unwanted quotes
-        if (parsedYaml && typeof parsedYaml === 'object') {
-            Object.keys(parsedYaml).forEach((key) => {
-                if (parsedYaml[key]?.$ref) {
-                    logger_1.default.info(`Parsed $ref: ${parsedYaml[key].$ref}`);
-                }
-            });
-        }
-        return parsedYaml;
+        const files = fs
+            .readdirSync(directory)
+            .map((file) => path.join(directory, file));
+        logger_1.default.info('Files loaded successfully from', directory);
+        return files;
     }
     catch (error) {
-        logger_1.default.error('Failed to load YAML file', { filePath, error });
-        throw error;
+        logger_1.default.error('Error loading files from directory', directory, error);
+        throw new Error(`Failed to load files from ${directory}`);
     }
-}
-exports.loadYamlFile = loadYamlFile;
-async function loadJsonFile(filePath) {
-    try {
-        const fileContents = await fs.readFile(filePath, 'utf8');
-        return JSON.parse(fileContents);
-    }
-    catch (error) {
-        logger_1.default.error('Failed to load JSON file', { filePath, error });
-        throw error;
-    }
-}
-exports.loadJsonFile = loadJsonFile;
+};
+exports.loadFiles = loadFiles;
