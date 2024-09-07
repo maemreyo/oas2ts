@@ -1,6 +1,6 @@
 import * as path from 'path';
-import config from '../../oas2ts.config';
-import { SchemaProperty, ArrayProperty } from './types';
+import { loadConfig, Config } from '../../shared/configLoader';
+import { SchemaProperty, ObjectProperty, ArrayProperty } from './types';
 import { toCamelCase, capitalize } from '../../utils/string';
 import { isReferenceProperty, isSchemaFormat } from '../../utils/typeGuard';
 import {
@@ -9,9 +9,18 @@ import {
   BASE_IMPORT_PATH,
 } from '../../utils/constants';
 import { generateImportStatement } from '../../utils/importHelpers';
-import { generateArrayType } from '../../utils/typeHelpers';
+import { generateArrayType, generateObjectType } from '../../utils/typeHelpers';
 import { SchemaFormats, SchemaTypes } from '../../utils/enums';
 import logger from '../../utils/logger';
+
+/**
+ * Loads the configuration dynamically from JSON or YAML.
+ *
+ * @returns The loaded configuration object.
+ */
+const getConfig = (): Config => {
+  return loadConfig(path.resolve(process.cwd(), 'oas2ts.config.json'));
+};
 
 /**
  * Resolves the TypeScript type for a given schema property.
@@ -28,14 +37,16 @@ export const resolveType = (
   imports: Set<string>,
 ): string => {
   try {
-    logger.info(`Resolving type for property: ${propName}`);
+    // Load config dynamically when resolveType is used
+    const config = getConfig();
+
     // Handle $ref (external references)
     if ('$ref' in prop) {
       return resolveRefType(prop, imports);
     }
 
     // Handle baseType from config (UUID, ISODate, etc.)
-    const baseType = resolveBaseType(prop, propName, imports);
+    const baseType = resolveBaseType(prop, propName, imports, config);
     if (baseType) return baseType;
 
     // Handle known number formats (float, double)
@@ -91,18 +102,21 @@ export const resolveRefType = (
  * @param prop - The schema property to resolve the base type for.
  * @param propName - The name of the property being processed.
  * @param imports - A set used to collect import statements for referenced types.
+ * @param config - The loaded configuration object.
  * @returns The resolved base type or undefined if no match is found.
  */
 const resolveBaseType = (
   prop: SchemaProperty,
   propName: string,
   imports: Set<string>,
+  config: Config, // Use dynamic config loaded from file
 ): string | undefined => {
   for (const [baseType, condition] of Object.entries(config.baseType)) {
     if (
       prop.type === condition.type && // Ensure prop.type exists and matches
       prop.format === condition.format && // Ensure prop.format exists and matches
-      condition.props.some(
+      condition.props?.some(
+        // Check if props is defined
         (p) => propName.toLowerCase().includes(p.toLowerCase()), // Match propName against props in config
       )
     ) {
@@ -130,6 +144,27 @@ const resolveNumberFormat = (prop: SchemaProperty): string => {
   }
 
   return SchemaTypes.NUMBER;
+};
+
+/**
+ * Resolves object types by iterating over the properties of the object.
+ *
+ * @param prop - The schema property representing an object.
+ * @param imports - A set used to collect import statements for referenced types.
+ * @returns The TypeScript type for the object.
+ */
+const resolveObjectType = (
+  prop: ObjectProperty,
+  imports: Set<string>,
+): string => {
+  const properties = Object.keys(prop.properties).map((propName) => {
+    const property = prop.properties[propName];
+    const type = resolveType(property, propName, imports);
+    const required = prop.required?.includes(propName) ? '' : '?'; // Handle optional properties
+    return `${propName}${required}: ${type}`;
+  });
+
+  return generateObjectType(properties);
 };
 
 /**

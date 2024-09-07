@@ -1,13 +1,15 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { parseSchema } from '../schemaParser';
-import { config as appConfig } from '../../config';
 import logger from '../../shared/logger';
-import config from '../../oas2ts.config';
 import { toCamelCase } from '../../utils/string';
 import { generateTypesForSchema } from '../../infrastructure/typeNameHandler/schemaTypeGenerator';
 import {
-  BASE_FILE_NAME,
+  loadConfig,
+  getDefaultConfig,
+  type Config,
+} from '../../shared/configLoader'; // Load config types and functions
+import {
   BASE_FILE_GENERATED_MESSAGE,
   TYPE_ALIAS_TEMPLATE,
   FILE_GENERATED_SUCCESSFULLY,
@@ -42,18 +44,19 @@ const writeFile = async (filePath: string, content: string): Promise<void> => {
 /**
  * Dynamically generates the `base.ts` file based on the configuration.
  *
- * Loops through all base types defined in the `oas2ts.config` file and generates
+ * Loops through all base types defined in the configuration file and generates
  * corresponding type aliases in the `base.ts` file.
  *
+ * @param config - The loaded configuration object.
  * @returns A promise that resolves when the `base.ts` file is successfully written.
  *
  * @example
  * ```typescript
- * await generateBaseFile();
+ * await generateBaseFile(config);
  * ```
  */
-const generateBaseFile = async (): Promise<void> => {
-  const outputPath = path.join(appConfig.outputDirectory, BASE_FILE_NAME);
+const generateBaseFile = async (config: Config): Promise<void> => {
+  const outputPath = path.join(config.outputDirectory, 'base.ts');
   let baseFileContent = '';
 
   // Loop through each baseType in the config and generate type aliases
@@ -76,26 +79,34 @@ const generateBaseFile = async (): Promise<void> => {
  * It also handles imports and ensures that they are correctly formatted and deduplicated.
  *
  * @param schemaPath - The path to the schema file to be processed.
+ * @param config - The loaded configuration object.
  * @returns A promise that resolves when the schema file has been successfully processed.
  *
  * @example
  * ```typescript
- * await processSchemaFile('/path/to/schema.yaml');
+ * await processSchemaFile('/path/to/schema.yaml', config);
  * ```
  */
-const processSchemaFile = async (schemaPath: string): Promise<void> => {
+const processSchemaFile = async (
+  schemaPath: string,
+  config: Config,
+): Promise<void> => {
   try {
     const schemaFileName = path.basename(schemaPath, path.extname(schemaPath));
     const parsedSchema = parseSchema(schemaPath);
+
+    // Log the parsed schema to verify that it is not empty
+    logger.info(`Parsed schema for ${schemaFileName}:`, parsedSchema);
+
+    if (!parsedSchema || Object.keys(parsedSchema).length === 0) {
+      throw new Error(`Parsed schema is empty for ${schemaFileName}`);
+    }
 
     let typesContent = '';
     const imports: Set<string> = new Set(); // Set to store import lines
 
     // Handle cases where parsedSchema is empty or a general object
-    if (
-      Object.keys(parsedSchema).length === 0 ||
-      parsedSchema.type === SchemaTypes.OBJECT
-    ) {
+    if (parsedSchema.type === SchemaTypes.OBJECT && !parsedSchema.properties) {
       parsedSchema[schemaFileName] = parsedSchema;
     }
 
@@ -115,7 +126,7 @@ const processSchemaFile = async (schemaPath: string): Promise<void> => {
     const fileName = `${toCamelCase(schemaFileName)}.ts`;
 
     // Output file path
-    const outputPath = path.join(appConfig.outputDirectory, fileName);
+    const outputPath = path.join(config.outputDirectory, fileName);
 
     // Remove duplicate imports (ensured by using Set, but sorting)
     const importsString = Array.from(imports).sort().join('\n');
@@ -143,16 +154,30 @@ const processSchemaFile = async (schemaPath: string): Promise<void> => {
  * them to separate `.ts` files.
  *
  * @param schemas - Array of schema file paths to be processed.
+ * @param configPath - The path to the configuration file (JSON or YAML). If not provided, uses the default configuration.
  * @returns A promise that resolves when all schema files have been successfully processed.
  *
  * @example
  * ```typescript
- * await generateTypeFiles(['/path/to/schema1.yaml', '/path/to/schema2.yaml']);
+ * await generateTypeFiles(['/path/to/schema1.yaml', '/path/to/schema2.yaml'], '/path/to/config.yaml');
  * ```
  */
-export const generateTypeFiles = async (schemas: string[]): Promise<void> => {
-  await generateBaseFile();
+export const generateTypeFiles = async (
+  schemas: string[],
+  configPath?: string,
+): Promise<void> => {
+  logger.info({ configPath });
+
+  // Load configuration from file or use default
+  const config: Config = configPath
+    ? loadConfig(configPath) // Load config if configPath is provided
+    : getDefaultConfig(); // Otherwise, use default configuration
+
+  // Generate base.ts file based on config
+  await generateBaseFile(config);
 
   // Process each schema file asynchronously
-  await Promise.all(schemas.map((schemaPath) => processSchemaFile(schemaPath)));
+  await Promise.all(
+    schemas.map((schemaPath) => processSchemaFile(schemaPath, config)),
+  );
 };
