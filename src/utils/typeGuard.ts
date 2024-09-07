@@ -1,8 +1,8 @@
 import {
-  SchemaFormats,
   SchemaProperty,
   ReferenceProperty,
 } from '../infrastructure/typeNameHandler/types';
+import { SchemaFormats } from './enums';
 
 /**
  * Type guard to check if a given schema property is a reference property (has a $ref).

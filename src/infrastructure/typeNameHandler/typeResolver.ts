@@ -1,11 +1,6 @@
 import * as path from 'path';
 import config from '../../oas2ts.config';
-import {
-  SchemaProperty,
-  ArrayProperty,
-  SchemaTypes,
-  SchemaFormats,
-} from './types';
+import { SchemaProperty, ArrayProperty } from './types';
 import { toCamelCase, capitalize } from '../../utils/string';
 import { isReferenceProperty, isSchemaFormat } from '../../utils/typeGuard';
 import {
@@ -15,6 +10,7 @@ import {
 } from '../../utils/constants';
 import { generateImportStatement } from '../../utils/importHelpers';
 import { generateArrayType } from '../../utils/typeHelpers';
+import { SchemaFormats, SchemaTypes } from '../../utils/enums';
 
 /**
  * Resolves the TypeScript type for a given schema property.
