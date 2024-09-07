@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateArrayType = void 0;
+exports.generateObjectType = exports.generateArrayType = void 0;
 /**
  * Generates a TypeScript array type.
  *
@@ -15,3 +15,20 @@ const generateArrayType = (itemType) => {
     return `${itemType}[]`;
 };
 exports.generateArrayType = generateArrayType;
+/**
+ * Generates a TypeScript object type from a list of properties.
+ *
+ * @param properties - An array of strings representing the properties of the object.
+ * @returns A TypeScript object type as a string.
+ *
+ * @example
+ * ```typescript
+ * const properties = ['id: string', 'name: string'];
+ * const objectType = generateObjectType(properties);
+ * // Result: '{ id: string; name: string }'
+ * ```
+ */
+const generateObjectType = (properties) => {
+    return `{ ${properties.join('; ')} }`;
+};
+exports.generateObjectType = generateObjectType;

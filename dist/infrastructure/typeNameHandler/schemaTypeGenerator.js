@@ -1,9 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateTypesForSchema = void 0;
 const propertyHandler_1 = require("./propertyHandler");
 const typeResolver_1 = require("./typeResolver");
 const string_1 = require("../../utils/string");
+const logger_1 = __importDefault(require("../../utils/logger"));
 /**
  * Generates an interface definition in TypeScript based on a schema object.
  *
@@ -28,11 +32,19 @@ const string_1 = require("../../utils/string");
  * ```
  */
 const generateInterface = (schemaName, schema, imports, fileName) => {
-    const properties = (0, propertyHandler_1.generateProperties)(schema.properties, schema.required || [], 2, imports);
-    const interfaceName = schemaName
-        ? (0, string_1.capitalize)(schemaName)
-        : (0, string_1.capitalize)(fileName);
-    return `export interface ${interfaceName} {\n${properties}\n}\n`;
+    try {
+        logger_1.default.info(`Generating properties for interface: ${schemaName || fileName}`);
+        const properties = (0, propertyHandler_1.generateProperties)(schema.properties, schema.required || [], 2, imports);
+        const interfaceName = schemaName
+            ? (0, string_1.capitalize)(schemaName)
+            : (0, string_1.capitalize)(fileName);
+        logger_1.default.info(`Generated interface for ${interfaceName}:\n${properties}`);
+        return `export interface ${interfaceName} {\n${properties}\n}\n`;
+    }
+    catch (error) {
+        console.error(`Error generating interface for schema ${schemaName || fileName}`, error);
+        throw error;
+    }
 };
 /**
  * Generates an enum definition in TypeScript based on a schema that contains enum values.
@@ -114,17 +126,33 @@ const generateStringWithFormat = (schemaName, schema, imports, fileName) => {
  */
 const generateTypesForSchema = (schemaName, schema, imports, fileName) => {
     let typeDefinitions = '';
-    // Handle object with properties (generate interface)
-    if ((!schema.type && 'properties' in schema) || schema.type === 'object') {
-        typeDefinitions += generateInterface(schemaName, schema, imports, fileName);
+    try {
+        // Handle object with properties (generate interface)
+        if ((!schema.type && 'properties' in schema) || schema.type === 'object') {
+            logger_1.default.info(`Generating interface for object: ${schemaName || fileName}`);
+            typeDefinitions += generateInterface(schemaName, schema, imports, fileName);
+        }
+        // Handle string enum
+        else if (schema.type === 'string' && 'enum' in schema) {
+            logger_1.default.info(`Generating enum for schema: ${schemaName || fileName}`);
+            typeDefinitions += generateEnum(schemaName, schema, fileName);
+        }
+        // Handle string with specific format (e.g., uuid)
+        else if (schema.type === 'string' && schema.format) {
+            logger_1.default.info(`Generating string with format for schema: ${schemaName || fileName}`);
+            typeDefinitions += generateStringWithFormat(schemaName, schema, imports, fileName);
+        }
+        // Handle $ref (external references)
+        else if ('$ref' in schema) {
+            logger_1.default.info(`Handling $ref for schema: ${schemaName || fileName}`);
+            const refType = (0, typeResolver_1.resolveRefType)(schema, imports);
+            typeDefinitions += `export type ${schemaName} = ${refType};\n`;
+        }
+        logger_1.default.info(`Generated TypeScript definitions for ${schemaName || fileName}:\n${typeDefinitions}`);
     }
-    // Handle string enum
-    else if (schema.type === 'string' && 'enum' in schema) {
-        typeDefinitions += generateEnum(schemaName, schema, fileName);
-    }
-    // Handle string with specific format (e.g., uuid)
-    else if (schema.type === 'string' && schema.format) {
-        typeDefinitions += generateStringWithFormat(schemaName, schema, imports, fileName);
+    catch (error) {
+        console.error(`Error generating types for schema ${schemaName || fileName}`, error);
+        throw error;
     }
     return typeDefinitions;
 };

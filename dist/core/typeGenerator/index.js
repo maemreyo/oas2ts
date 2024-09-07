@@ -30,11 +30,10 @@ exports.generateTypeFiles = void 0;
 const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
 const schemaParser_1 = require("../schemaParser");
-const config_1 = require("../../config");
 const logger_1 = __importDefault(require("../../shared/logger"));
-const oas2ts_config_1 = __importDefault(require("../../oas2ts.config"));
 const string_1 = require("../../utils/string");
 const schemaTypeGenerator_1 = require("../../infrastructure/typeNameHandler/schemaTypeGenerator");
+const configLoader_1 = require("../../shared/configLoader"); // Load config types and functions
 const constants_1 = require("../../utils/constants");
 const enums_1 = require("../../utils/enums");
 /**
@@ -51,6 +50,8 @@ const enums_1 = require("../../utils/enums");
  */
 const writeFile = async (filePath, content) => {
     try {
+        logger_1.default.info(`Writing file to: ${filePath}`);
+        logger_1.default.info(`File content:\n${content}`);
         await fs.writeFile(filePath, content);
         logger_1.default.info(`File written successfully: ${filePath}`);
     }
@@ -61,21 +62,22 @@ const writeFile = async (filePath, content) => {
 /**
  * Dynamically generates the `base.ts` file based on the configuration.
  *
- * Loops through all base types defined in the `oas2ts.config` file and generates
+ * Loops through all base types defined in the configuration file and generates
  * corresponding type aliases in the `base.ts` file.
  *
+ * @param config - The loaded configuration object.
  * @returns A promise that resolves when the `base.ts` file is successfully written.
  *
  * @example
  * ```typescript
- * await generateBaseFile();
+ * await generateBaseFile(config);
  * ```
  */
-const generateBaseFile = async () => {
-    const outputPath = path.join(config_1.config.outputDirectory, constants_1.BASE_FILE_NAME);
+const generateBaseFile = async (config) => {
+    const outputPath = path.join(config.outputDirectory, 'base.ts');
     let baseFileContent = '';
     // Loop through each baseType in the config and generate type aliases
-    Object.entries(oas2ts_config_1.default.baseType).forEach(([typeName, { type }]) => {
+    Object.entries(config.baseType).forEach(([typeName, { type }]) => {
         baseFileContent += constants_1.TYPE_ALIAS_TEMPLATE.replace('${typeName}', typeName).replace('${type}', type);
     });
     // Write the generated content to base.ts
@@ -89,22 +91,27 @@ const generateBaseFile = async () => {
  * It also handles imports and ensures that they are correctly formatted and deduplicated.
  *
  * @param schemaPath - The path to the schema file to be processed.
+ * @param config - The loaded configuration object.
  * @returns A promise that resolves when the schema file has been successfully processed.
  *
  * @example
  * ```typescript
- * await processSchemaFile('/path/to/schema.yaml');
+ * await processSchemaFile('/path/to/schema.yaml', config);
  * ```
  */
-const processSchemaFile = async (schemaPath) => {
+const processSchemaFile = async (schemaPath, config) => {
     try {
         const schemaFileName = path.basename(schemaPath, path.extname(schemaPath));
         const parsedSchema = (0, schemaParser_1.parseSchema)(schemaPath);
+        // Log the parsed schema to verify that it is not empty
+        logger_1.default.info(`Parsed schema for ${schemaFileName}:`, parsedSchema);
+        if (!parsedSchema || Object.keys(parsedSchema).length === 0) {
+            throw new Error(`Parsed schema is empty for ${schemaFileName}`);
+        }
         let typesContent = '';
         const imports = new Set(); // Set to store import lines
         // Handle cases where parsedSchema is empty or a general object
-        if (Object.keys(parsedSchema).length === 0 ||
-            parsedSchema.type === enums_1.SchemaTypes.OBJECT) {
+        if (parsedSchema.type === enums_1.SchemaTypes.OBJECT && !parsedSchema.properties) {
             parsedSchema[schemaFileName] = parsedSchema;
         }
         // Generate types for each schema in the file
@@ -116,7 +123,7 @@ const processSchemaFile = async (schemaPath) => {
         // Generate the output file name (e.g., location.yaml -> location.ts)
         const fileName = `${(0, string_1.toCamelCase)(schemaFileName)}.ts`;
         // Output file path
-        const outputPath = path.join(config_1.config.outputDirectory, fileName);
+        const outputPath = path.join(config.outputDirectory, fileName);
         // Remove duplicate imports (ensured by using Set, but sorting)
         const importsString = Array.from(imports).sort().join('\n');
         // Combine imports and types into the final file content
@@ -138,16 +145,23 @@ const processSchemaFile = async (schemaPath) => {
  * them to separate `.ts` files.
  *
  * @param schemas - Array of schema file paths to be processed.
+ * @param configPath - The path to the configuration file (JSON or YAML). If not provided, uses the default configuration.
  * @returns A promise that resolves when all schema files have been successfully processed.
  *
  * @example
  * ```typescript
- * await generateTypeFiles(['/path/to/schema1.yaml', '/path/to/schema2.yaml']);
+ * await generateTypeFiles(['/path/to/schema1.yaml', '/path/to/schema2.yaml'], '/path/to/config.yaml');
  * ```
  */
-const generateTypeFiles = async (schemas) => {
-    await generateBaseFile();
+const generateTypeFiles = async (schemas, configPath) => {
+    logger_1.default.info({ configPath });
+    // Load configuration from file or use default
+    const config = configPath
+        ? (0, configLoader_1.loadConfig)(configPath) // Load config if configPath is provided
+        : (0, configLoader_1.getDefaultConfig)(); // Otherwise, use default configuration
+    // Generate base.ts file based on config
+    await generateBaseFile(config);
     // Process each schema file asynchronously
-    await Promise.all(schemas.map((schemaPath) => processSchemaFile(schemaPath)));
+    await Promise.all(schemas.map((schemaPath) => processSchemaFile(schemaPath, config)));
 };
 exports.generateTypeFiles = generateTypeFiles;

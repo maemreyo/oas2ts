@@ -22,19 +22,24 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveType = void 0;
+exports.resolveRefType = exports.resolveType = void 0;
 const path = __importStar(require("path"));
-const oas2ts_config_1 = __importDefault(require("../../oas2ts.config"));
+const configLoader_1 = require("../../shared/configLoader");
 const string_1 = require("../../utils/string");
 const typeGuard_1 = require("../../utils/typeGuard");
 const constants_1 = require("../../utils/constants");
 const importHelpers_1 = require("../../utils/importHelpers");
 const typeHelpers_1 = require("../../utils/typeHelpers");
 const enums_1 = require("../../utils/enums");
+/**
+ * Loads the configuration dynamically from JSON or YAML.
+ *
+ * @returns The loaded configuration object.
+ */
+const getConfig = () => {
+    return (0, configLoader_1.loadConfig)(path.resolve(process.cwd(), 'oas2ts.config.json'));
+};
 /**
  * Resolves the TypeScript type for a given schema property.
  * This function handles `$ref`, base types from config, known formats, and basic types.
@@ -45,20 +50,28 @@ const enums_1 = require("../../utils/enums");
  * @returns The resolved TypeScript type as a string.
  */
 const resolveType = (prop, propName, imports) => {
-    // Handle $ref (external references)
-    if ('$ref' in prop) {
-        return resolveRefType(prop, imports);
+    try {
+        // Load config dynamically when resolveType is used
+        const config = getConfig();
+        // Handle $ref (external references)
+        if ('$ref' in prop) {
+            return (0, exports.resolveRefType)(prop, imports);
+        }
+        // Handle baseType from config (UUID, ISODate, etc.)
+        const baseType = resolveBaseType(prop, propName, imports, config);
+        if (baseType)
+            return baseType;
+        // Handle known number formats (float, double)
+        if (prop.type === enums_1.SchemaTypes.NUMBER) {
+            return resolveNumberFormat(prop);
+        }
+        // Handle basic types (string, integer, boolean, array)
+        return resolveBasicTypes(prop, propName, imports);
     }
-    // Handle baseType from config (UUID, ISODate, etc.)
-    const baseType = resolveBaseType(prop, propName, imports);
-    if (baseType)
-        return baseType;
-    // Handle known number formats (float, double)
-    if (prop.type === enums_1.SchemaTypes.NUMBER) {
-        return resolveNumberFormat(prop);
+    catch (error) {
+        console.error(`Error resolving type for property ${propName}`, error);
+        throw error;
     }
-    // Handle basic types (string, integer, boolean, array)
-    return resolveBasicTypes(prop, propName, imports);
 };
 exports.resolveType = resolveType;
 /**
@@ -71,33 +84,37 @@ exports.resolveType = resolveType;
 const resolveRefType = (prop, imports) => {
     if ((0, typeGuard_1.isReferenceProperty)(prop)) {
         const refParts = prop.$ref.split('#');
-        const filePath = refParts[0];
+        const filePath = refParts[0]; // Path to the file with the definition
         const refType = refParts[1] ? refParts[1].replace('/', '') : '';
         if (filePath) {
             const importFileName = (0, string_1.toCamelCase)(path.basename(filePath, path.extname(filePath)));
             const typeName = refType || (0, string_1.capitalize)(importFileName);
-            const importPath = `${constants_1.BASE_PATH}${importFileName}`;
-            // Add import statement to avoid duplicates
-            imports.add((0, importHelpers_1.generateImportStatement)(typeName, importPath));
+            const importPath = `./${importFileName}`;
+            // Add the import statement to avoid duplicates
+            imports.add(`import { ${typeName} } from '${importPath}';`);
             return typeName;
         }
         return refType || constants_1.DEFAULT_TYPE;
     }
-    return constants_1.DEFAULT_TYPE; // Default return if not a reference type
+    return constants_1.DEFAULT_TYPE;
 };
+exports.resolveRefType = resolveRefType;
 /**
  * Resolves base types from the config (e.g., UUID, ISODate).
  *
  * @param prop - The schema property to resolve the base type for.
  * @param propName - The name of the property being processed.
  * @param imports - A set used to collect import statements for referenced types.
+ * @param config - The loaded configuration object.
  * @returns The resolved base type or undefined if no match is found.
  */
-const resolveBaseType = (prop, propName, imports) => {
-    for (const [baseType, condition] of Object.entries(oas2ts_config_1.default.baseType)) {
+const resolveBaseType = (prop, propName, imports, config) => {
+    for (const [baseType, condition] of Object.entries(config.baseType)) {
         if (prop.type === condition.type && // Ensure prop.type exists and matches
             prop.format === condition.format && // Ensure prop.format exists and matches
-            condition.props.some((p) => propName.toLowerCase().includes(p.toLowerCase()))) {
+            condition.props?.some(
+            // Check if props is defined
+            (p) => propName.toLowerCase().includes(p.toLowerCase()))) {
             imports.add((0, importHelpers_1.generateImportStatement)(baseType, constants_1.BASE_IMPORT_PATH));
             return baseType;
         }
@@ -116,6 +133,22 @@ const resolveNumberFormat = (prop) => {
         return enums_1.SchemaTypes.NUMBER;
     }
     return enums_1.SchemaTypes.NUMBER;
+};
+/**
+ * Resolves object types by iterating over the properties of the object.
+ *
+ * @param prop - The schema property representing an object.
+ * @param imports - A set used to collect import statements for referenced types.
+ * @returns The TypeScript type for the object.
+ */
+const resolveObjectType = (prop, imports) => {
+    const properties = Object.keys(prop.properties).map((propName) => {
+        const property = prop.properties[propName];
+        const type = (0, exports.resolveType)(property, propName, imports);
+        const required = prop.required?.includes(propName) ? '' : '?'; // Handle optional properties
+        return `${propName}${required}: ${type}`;
+    });
+    return (0, typeHelpers_1.generateObjectType)(properties);
 };
 /**
  * Resolves basic types (string, integer, boolean, array).
