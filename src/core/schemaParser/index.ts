@@ -1,6 +1,6 @@
 import * as yaml from 'js-yaml';
 import * as fs from 'fs';
-import logger from '../../shared/logger';
+import logger from '../../utils/logger';
 
 // Parse the schema from a YAML or JSON file
 export const parseSchema = (filePath: string): any => {

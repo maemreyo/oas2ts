@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { parseSchema } from '../schemaParser';
-import logger from '../../shared/logger';
+import logger from '../../utils/logger';
 import { toCamelCase } from '../../utils/string';
 import { generateTypesForSchema } from '../../infrastructure/typeNameHandler/schemaTypeGenerator';
 import {
@@ -32,10 +32,10 @@ import { SchemaTypes } from '../../utils/enums';
  */
 const writeFile = async (filePath: string, content: string): Promise<void> => {
   try {
-    logger.info(`Writing file to: ${filePath}`);
-    logger.info(`File content:\n${content}`);
+    logger.debug(`Writing file to: ${filePath}`);
+    logger.debug(`File content:\n${content}`);
     await fs.writeFile(filePath, content);
-    logger.info(`File written successfully: ${filePath}`);
+    logger.debug(`File written successfully: ${filePath}`);
   } catch (error) {
     logger.error(`Error writing file ${filePath}`, error);
   }
@@ -56,7 +56,7 @@ const writeFile = async (filePath: string, content: string): Promise<void> => {
  * ```
  */
 const generateBaseFile = async (config: Config): Promise<void> => {
-  const outputPath = path.join(config.outputDirectory, 'base.ts');
+  const outputPath = path.join(config.directories.output.types, 'base.ts');
   let baseFileContent = '';
 
   // Loop through each baseType in the config and generate type aliases
@@ -96,7 +96,7 @@ const processSchemaFile = async (
     const parsedSchema = parseSchema(schemaPath);
 
     // Log the parsed schema to verify that it is not empty
-    logger.info(`Parsed schema for ${schemaFileName}:`, parsedSchema);
+    logger.debug(`Parsed schema for ${schemaFileName}:`, parsedSchema);
 
     if (!parsedSchema || Object.keys(parsedSchema).length === 0) {
       throw new Error(`Parsed schema is empty for ${schemaFileName}`);
@@ -126,7 +126,7 @@ const processSchemaFile = async (
     const fileName = `${toCamelCase(schemaFileName)}.ts`;
 
     // Output file path
-    const outputPath = path.join(config.outputDirectory, fileName);
+    const outputPath = path.join(config.directories.output.types, fileName);
 
     // Remove duplicate imports (ensured by using Set, but sorting)
     const importsString = Array.from(imports).sort().join('\n');
@@ -137,7 +137,7 @@ const processSchemaFile = async (
     // Write all types and interfaces to the output file
     await writeFile(outputPath, finalContent);
 
-    logger.info(
+    logger.debug(
       `${FILE_GENERATED_SUCCESSFULLY}: ${schemaFileName} -> ${fileName}`,
     );
   } catch (error) {
@@ -166,8 +166,6 @@ export const generateTypeFiles = async (
   schemas: string[],
   configPath?: string,
 ): Promise<void> => {
-  logger.info({ configPath });
-
   // Load configuration from file or use default
   const config: Config = configPath
     ? loadConfig(configPath) // Load config if configPath is provided

@@ -1,5 +1,5 @@
 // Define log levels as a type alias with a union of string literals
-type LogLevel = 'info' | 'warn' | 'error';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 // Define a type alias for an array of messages, which can be any type
 type LogMessage = unknown[];
@@ -20,6 +20,9 @@ class ConsoleTransport implements LogTransport {
       : '';
     const logMessage = `[${level.toUpperCase()}]: ${messages.map((msg) => (typeof msg === 'object' ? JSON.stringify(msg) : msg)).join(' ')}${contextString}`;
     switch (level) {
+      case 'debug':
+        console.debug(`🐛`, logMessage);
+        break;
       case 'info':
         console.info(`ℹ️`, logMessage);
         break;
@@ -67,6 +70,10 @@ class Logger {
   }
 
   // Methods to log messages with various levels, supporting multiple arguments
+  public async debug(...messages: LogMessage): Promise<void> {
+    await this.log('debug', messages);
+  }
+
   public async info(...messages: LogMessage): Promise<void> {
     await this.log('info', messages);
   }
@@ -82,9 +89,10 @@ class Logger {
   // Private method to check if a message should be logged based on the current log level
   private shouldLog(level: LogLevel): boolean {
     const levels: Record<LogLevel, number> = {
-      info: 0,
-      warn: 1,
-      error: 2,
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3,
     };
     return levels[level] >= levels[this.logLevel];
   }

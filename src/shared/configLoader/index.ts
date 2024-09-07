@@ -6,8 +6,16 @@ import * as yaml from 'js-yaml';
  * Interface defining the structure of the configuration file.
  */
 export interface Config {
-  schemaDirectory: string;
-  outputDirectory: string;
+  directories: {
+    input: {
+      schemas: string;
+      apiModels: string;
+    };
+    output: {
+      types: string;
+      apiModels: string;
+    };
+  };
   baseType: Record<string, { type: string; format?: string; props?: string[] }>;
 }
 
@@ -46,8 +54,16 @@ export const loadConfig = (configPath: string): Config => {
  * @returns The default configuration object.
  */
 export const getDefaultConfig = (): Config => ({
-  schemaDirectory: './mocks/input/schemas',
-  outputDirectory: './mocks/output/types',
+  directories: {
+    input: {
+      schemas: './mocks/input/schemas',
+      apiModels: './mocks/input/paths',
+    },
+    output: {
+      types: './mocks/output/types',
+      apiModels: './mocks/output/apiModels',
+    },
+  },
   baseType: {
     UUID: {
       type: 'string',

@@ -1,17 +1,34 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import logger from '../../shared/logger';
+import logger from '../../utils/logger';
 
-// Load files from a directory with error handling
-export const loadFiles = (directory: string): string[] => {
+/**
+ * Loads all files recursively from a directory.
+ *
+ * @param dirPath - The directory path to load files from.
+ * @returns An array of file paths.
+ */
+export const loadFiles = (dirPath: string): string[] => {
+  let fileList: string[] = [];
+
   try {
-    const files = fs
-      .readdirSync(directory)
-      .map((file) => path.join(directory, file));
-    logger.info('Files loaded successfully from', directory);
-    return files;
+    const items = fs.readdirSync(dirPath);
+
+    items.forEach((item) => {
+      const fullPath = path.join(dirPath, item);
+
+      // Check if the item is a directory or a file
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        // Recursively load files from the subdirectory
+        fileList = fileList.concat(loadFiles(fullPath));
+      } else if (stat.isFile()) {
+        fileList.push(fullPath);
+      }
+    });
   } catch (error) {
-    logger.error('Error loading files from directory', directory, error);
-    throw new Error(`Failed to load files from ${directory}`);
+    logger.error(`Error reading directory: ${dirPath}`, error);
   }
+
+  return fileList;
 };

@@ -34,7 +34,7 @@ const generateInterface = (
   fileName: string,
 ): string => {
   try {
-    logger.info(
+    logger.debug(
       `Generating properties for interface: ${schemaName || fileName}`,
     );
     const properties = generateProperties(
@@ -46,7 +46,7 @@ const generateInterface = (
     const interfaceName = schemaName
       ? capitalize(schemaName)
       : capitalize(fileName);
-    logger.info(`Generated interface for ${interfaceName}:\n${properties}`);
+    logger.debug(`Generated interface for ${interfaceName}:\n${properties}`);
     return `export interface ${interfaceName} {\n${properties}\n}\n`;
   } catch (error) {
     console.error(
@@ -161,7 +161,9 @@ export const generateTypesForSchema = (
   try {
     // Handle object with properties (generate interface)
     if ((!schema.type && 'properties' in schema) || schema.type === 'object') {
-      logger.info(`Generating interface for object: ${schemaName || fileName}`);
+      logger.debug(
+        `Generating interface for object: ${schemaName || fileName}`,
+      );
       typeDefinitions += generateInterface(
         schemaName,
         schema as ObjectProperty,
@@ -172,7 +174,7 @@ export const generateTypesForSchema = (
 
     // Handle string enum
     else if (schema.type === 'string' && 'enum' in schema) {
-      logger.info(`Generating enum for schema: ${schemaName || fileName}`);
+      logger.debug(`Generating enum for schema: ${schemaName || fileName}`);
       typeDefinitions += generateEnum(
         schemaName,
         schema as EnumProperty,
@@ -182,7 +184,7 @@ export const generateTypesForSchema = (
 
     // Handle string with specific format (e.g., uuid)
     else if (schema.type === 'string' && schema.format) {
-      logger.info(
+      logger.debug(
         `Generating string with format for schema: ${schemaName || fileName}`,
       );
       typeDefinitions += generateStringWithFormat(
@@ -200,7 +202,7 @@ export const generateTypesForSchema = (
       typeDefinitions += `export type ${schemaName} = ${refType};\n`;
     }
 
-    logger.info(
+    logger.debug(
       `Generated TypeScript definitions for ${schemaName || fileName}:\n${typeDefinitions}`,
     );
   } catch (error) {

@@ -10,7 +10,7 @@ export const generateProperties = (
   imports: Set<string>,
 ): string => {
   try {
-    logger.info(
+    logger.debug(
       `Generating properties for object with ${Object.keys(properties).length} properties`,
     );
     return Object.keys(properties)

@@ -1,6 +1,16 @@
 {
-  "schemaDirectory": "./mocks/input/schemas",
-  "outputDirectory": "./mocks/output/types",
+  "directories": {
+    "input": {
+      "schemas": "./mocks/input/components/schemas",
+      "apiModels": "./mocks/input/paths",
+      "parameters": "./mocks/input/components/parameters"
+    },
+    "output": {
+      "types": "./mocks/output/types",
+      "apiModels": "./mocks/output/apiModels",
+      "parameters": "./mocks/output/parameters"
+    }
+  },
   "baseType": {
     "UUID": {
       "type": "string",
