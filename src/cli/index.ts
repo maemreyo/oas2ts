@@ -54,7 +54,7 @@ export const runCLI = () => {
 
     // Step 3: Load API model files and generate corresponding types
     logger.info('Loading API model files...');
-    parseApiModels(apiModelDir, apiOutputDir, typesDir);
+    parseApiModels(apiModelDir, apiOutputDir, typesDir, parameterOutputDir);
     logger.info('API models parsed and types generated successfully');
   } catch (error) {
     logger.error('Error executing CLI', error);

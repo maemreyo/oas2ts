@@ -34,6 +34,39 @@ const extractSuccessResponseRef = (
 };
 
 /**
+ * Extracts the references for parameters from the API model and converts them into type names.
+ *
+ * @param parameters - The list of parameter references from the API model.
+ * @param parametersDir - The directory where the parameters are located.
+ * @returns An array of parameter names and types with the correct import path.
+ */
+const extractParameterRefs = (
+  parameters: { $ref: string }[] | undefined,
+  parametersDir: string,
+): { paramName: string; paramType: string; importPath: string }[] => {
+  if (!parameters) return [];
+
+  return parameters.map((param) => {
+    const paramFileName =
+      param.$ref.split('/').pop()?.replace('.yaml', '') || '';
+    const paramType = toPascalCaseAndRemoveDashes(paramFileName);
+    const paramName = toCamelCaseFileName(paramFileName);
+
+    // Detect if parameter is part of a larger file (e.g., Timeoff.ts)
+    const importFileName = paramFileName.includes('timeoff')
+      ? 'Timeoff'
+      : paramType;
+
+    const importPath = path.relative(
+      parametersDir,
+      path.join(parametersDir, `${importFileName}.ts`),
+    );
+
+    return { paramName, paramType, importPath };
+  });
+};
+
+/**
  * Parses an API model file (YAML or JSON).
  *
  * @param filePath - The path to the API model file.
@@ -58,19 +91,21 @@ const parseApiFile = (filePath: string): any => {
 };
 
 /**
- * Parses API models, handling paths, responses, and tags.
+ * Parses API models, handling paths, responses, and parameters.
  *
  * @param inputDir - The directory containing API models (YAML or JSON files).
  * @param outputDir - The directory to output generated TypeScript types.
  * @param typesDir - The directory where the response types are located.
+ * @param parametersDir - The directory where the parameter types are located.
  */
 export const parseApiModels = (
   inputDir: string,
   outputDir: string,
   typesDir: string,
+  parametersDir: string,
 ) => {
   try {
-    const apiFiles = loadFiles(inputDir); // This is recursive now
+    const apiFiles = loadFiles(inputDir);
 
     apiFiles.forEach((apiFilePath) => {
       const apiModel = parseApiFile(apiFilePath);
@@ -90,12 +125,27 @@ export const parseApiModels = (
                 details.responses,
               );
               if (successResponseRef) {
-                const parameters =
-                  details.parameters?.map((param) => {
-                    return (
-                      param.$ref.split('/').pop()?.replace('.yaml', '') || ''
-                    );
-                  }) || [];
+                // Extract parameter references
+                const parameterRefs = extractParameterRefs(
+                  details.parameters,
+                  parametersDir,
+                );
+
+                // Prepare imports for parameters
+                const parameterImports = parameterRefs.map(
+                  ({ paramName, paramType, importPath }) => ({
+                    paramName,
+                    paramType,
+                    importPath: importPath
+                      .replace(/\\/g, '/')
+                      .replace('.ts', ''),
+                  }),
+                );
+
+                // Prepare parameter signatures for the function
+                const parameters = parameterRefs.map(
+                  ({ paramName, paramType }) => `${paramName}: ${paramType}`,
+                );
 
                 // Get response type and its filename from the $ref
                 const responseType =
@@ -117,7 +167,9 @@ export const parseApiModels = (
                   responseType,
                   outputFolder, // Current API output directory
                   typesDir, // Directory where the response types are located
+                  parametersDir, // Directory where the parameter types are located
                   filename, // Corrected filename
+                  parameterImports, // Parameter import statements
                 );
 
                 // Use PascalCase for the filename

@@ -122,7 +122,7 @@ export const parseParameterFiles = (inputDir: string, outputDir: string) => {
         // Iterate over each property and generate type
         Object.entries(parameters).forEach(([paramKey, paramValue]) => {
           const param = paramValue as Parameter; // Explicitly cast to Parameter type
-          const paramName = param.name;
+          const paramName = paramKey;
           if (!paramName) {
             logger.warn(
               `No 'name' found for parameter '${paramKey}' in file: ${parameterFilePath}, skipping...`,
