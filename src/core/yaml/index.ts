@@ -36,3 +36,13 @@ export const readYamlFilesRecursively = (dirPath: string): any[] => {
 
   return results;
 };
+
+/**
+ * Reads the content of a YAML file and returns it as a string.
+ *
+ * @param filePath - The path to the YAML file.
+ * @returns The content of the YAML file as a string.
+ */
+export const readYamlFileContent = (filePath: string): string => {
+  return fs.readFileSync(filePath, 'utf8');
+};

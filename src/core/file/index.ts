@@ -32,3 +32,13 @@ export const loadFiles = (dirPath: string): string[] => {
 
   return fileList;
 };
+
+/**
+ * Writes the content to the specified file.
+ *
+ * @param filePath - The path of the file to write.
+ * @param content - The content to be written.
+ */
+export const writeToFile = (filePath: string, content: string) => {
+  fs.writeFileSync(filePath, content, 'utf8');
+};

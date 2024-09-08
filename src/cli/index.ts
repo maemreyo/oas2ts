@@ -1,10 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../utils/logger';
-import { loadFiles } from '../core/fileLoader';
 import { generateTypeFiles } from '../core/typeGenerator';
 import { parseApiModels } from '../core/apiParser';
 import { parseParameterFiles } from '../core/parameterParser';
+import { loadFiles } from '../core/file';
 
 /**
  * Loads JSON configuration from the root directory.
