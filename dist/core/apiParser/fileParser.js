@@ -26,23 +26,34 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseSchema = void 0;
-const yaml = __importStar(require("js-yaml"));
+exports.parseApiFile = void 0;
 const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
+const yaml = __importStar(require("js-yaml"));
 const logger_1 = __importDefault(require("../../utils/logger"));
-// Parse the schema from a YAML or JSON file
-const parseSchema = (filePath) => {
+/**
+ * Parses an API model file (YAML or JSON).
+ *
+ * @param filePath - The path to the API model file.
+ * @returns Parsed content of the file as an object.
+ */
+const parseApiFile = (filePath) => {
     try {
+        const ext = path.extname(filePath).toLowerCase();
         const fileContent = fs.readFileSync(filePath, 'utf8');
-        const schema = filePath.endsWith('.yaml') || filePath.endsWith('.yml')
-            ? yaml.load(fileContent)
-            : JSON.parse(fileContent);
-        logger_1.default.info('Schema parsed successfully', filePath);
-        return schema;
+        if (ext === '.yaml' || ext === '.yml') {
+            return yaml.load(fileContent);
+        }
+        else if (ext === '.json') {
+            return JSON.parse(fileContent);
+        }
+        else {
+            throw new Error(`Unsupported file format: ${ext}`);
+        }
     }
     catch (error) {
-        logger_1.default.error('Error parsing schema from file', filePath, error);
-        throw new Error(`Failed to parse schema from ${filePath}`);
+        logger_1.default.error(`Error reading API model file: ${filePath}`, error);
+        return null;
     }
 };
-exports.parseSchema = parseSchema;
+exports.parseApiFile = parseApiFile;

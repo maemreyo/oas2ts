@@ -59,8 +59,16 @@ exports.loadConfig = loadConfig;
  * @returns The default configuration object.
  */
 const getDefaultConfig = () => ({
-    schemaDirectory: './mocks/input/schemas',
-    outputDirectory: './mocks/output/types',
+    directories: {
+        input: {
+            schemas: './mocks/input/schemas',
+            apiModels: './mocks/input/paths',
+        },
+        output: {
+            types: './mocks/output/types',
+            apiModels: './mocks/output/apiModels',
+        },
+    },
     baseType: {
         UUID: {
             type: 'string',

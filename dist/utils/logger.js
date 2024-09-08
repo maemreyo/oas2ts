@@ -8,6 +8,9 @@ class ConsoleTransport {
             : '';
         const logMessage = `[${level.toUpperCase()}]: ${messages.map((msg) => (typeof msg === 'object' ? JSON.stringify(msg) : msg)).join(' ')}${contextString}`;
         switch (level) {
+            case 'debug':
+                console.debug(`🐛`, logMessage);
+                break;
             case 'info':
                 console.info(`ℹ️`, logMessage);
                 break;
@@ -43,6 +46,9 @@ class Logger {
         this.transports.push(transport);
     }
     // Methods to log messages with various levels, supporting multiple arguments
+    async debug(...messages) {
+        await this.log('debug', messages);
+    }
     async info(...messages) {
         await this.log('info', messages);
     }
@@ -55,9 +61,10 @@ class Logger {
     // Private method to check if a message should be logged based on the current log level
     shouldLog(level) {
         const levels = {
-            info: 0,
-            warn: 1,
-            error: 2,
+            debug: 0,
+            info: 1,
+            warn: 2,
+            error: 3,
         };
         return levels[level] >= levels[this.logLevel];
     }

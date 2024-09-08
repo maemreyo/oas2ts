@@ -22,27 +22,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseSchema = void 0;
-const yaml = __importStar(require("js-yaml"));
-const fs = __importStar(require("fs"));
-const logger_1 = __importDefault(require("../../utils/logger"));
-// Parse the schema from a YAML or JSON file
-const parseSchema = (filePath) => {
-    try {
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const schema = filePath.endsWith('.yaml') || filePath.endsWith('.yml')
-            ? yaml.load(fileContent)
-            : JSON.parse(fileContent);
-        logger_1.default.info('Schema parsed successfully', filePath);
-        return schema;
-    }
-    catch (error) {
-        logger_1.default.error('Error parsing schema from file', filePath, error);
-        throw new Error(`Failed to parse schema from ${filePath}`);
-    }
+exports.resolveOutputFolder = void 0;
+const path = __importStar(require("path"));
+/**
+ * Resolves the output folder path based on tags.
+ */
+const resolveOutputFolder = (outputDir, tags) => {
+    return path.join(outputDir, ...tags);
 };
-exports.parseSchema = parseSchema;
+exports.resolveOutputFolder = resolveOutputFolder;

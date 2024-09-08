@@ -9,7 +9,7 @@ const string_1 = require("../../utils/string");
 const logger_1 = __importDefault(require("../../utils/logger"));
 const generateProperties = (properties, required, indentLevel, imports) => {
     try {
-        logger_1.default.info(`Generating properties for object with ${Object.keys(properties).length} properties`);
+        logger_1.default.debug(`Generating properties for object with ${Object.keys(properties).length} properties`);
         return Object.keys(properties)
             .map((propName) => {
             const prop = properties[propName];

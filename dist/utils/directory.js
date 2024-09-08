@@ -26,23 +26,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseSchema = void 0;
-const yaml = __importStar(require("js-yaml"));
+exports.ensureDirectoryExists = void 0;
 const fs = __importStar(require("fs"));
-const logger_1 = __importDefault(require("../../utils/logger"));
-// Parse the schema from a YAML or JSON file
-const parseSchema = (filePath) => {
-    try {
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const schema = filePath.endsWith('.yaml') || filePath.endsWith('.yml')
-            ? yaml.load(fileContent)
-            : JSON.parse(fileContent);
-        logger_1.default.info('Schema parsed successfully', filePath);
-        return schema;
-    }
-    catch (error) {
-        logger_1.default.error('Error parsing schema from file', filePath, error);
-        throw new Error(`Failed to parse schema from ${filePath}`);
+const logger_1 = __importDefault(require("./logger"));
+/**
+ * Ensures that a directory exists. If not, creates it recursively.
+ *
+ * @param dirPath - The path of the directory to check or create.
+ */
+const ensureDirectoryExists = (dirPath) => {
+    if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+        logger_1.default.info(`Created directory: ${dirPath}`);
     }
 };
-exports.parseSchema = parseSchema;
+exports.ensureDirectoryExists = ensureDirectoryExists;

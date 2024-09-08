@@ -30,7 +30,7 @@ exports.generateTypeFiles = void 0;
 const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
 const schemaParser_1 = require("../schemaParser");
-const logger_1 = __importDefault(require("../../shared/logger"));
+const logger_1 = __importDefault(require("../../utils/logger"));
 const string_1 = require("../../utils/string");
 const schemaTypeGenerator_1 = require("../../infrastructure/typeNameHandler/schemaTypeGenerator");
 const configLoader_1 = require("../../shared/configLoader"); // Load config types and functions
@@ -50,10 +50,10 @@ const enums_1 = require("../../utils/enums");
  */
 const writeFile = async (filePath, content) => {
     try {
-        logger_1.default.info(`Writing file to: ${filePath}`);
-        logger_1.default.info(`File content:\n${content}`);
+        logger_1.default.debug(`Writing file to: ${filePath}`);
+        logger_1.default.debug(`File content:\n${content}`);
         await fs.writeFile(filePath, content);
-        logger_1.default.info(`File written successfully: ${filePath}`);
+        logger_1.default.debug(`File written successfully: ${filePath}`);
     }
     catch (error) {
         logger_1.default.error(`Error writing file ${filePath}`, error);
@@ -74,7 +74,7 @@ const writeFile = async (filePath, content) => {
  * ```
  */
 const generateBaseFile = async (config) => {
-    const outputPath = path.join(config.outputDirectory, 'base.ts');
+    const outputPath = path.join(config.directories.output.types, 'base.ts');
     let baseFileContent = '';
     // Loop through each baseType in the config and generate type aliases
     Object.entries(config.baseType).forEach(([typeName, { type }]) => {
@@ -104,7 +104,7 @@ const processSchemaFile = async (schemaPath, config) => {
         const schemaFileName = path.basename(schemaPath, path.extname(schemaPath));
         const parsedSchema = (0, schemaParser_1.parseSchema)(schemaPath);
         // Log the parsed schema to verify that it is not empty
-        logger_1.default.info(`Parsed schema for ${schemaFileName}:`, parsedSchema);
+        logger_1.default.debug(`Parsed schema for ${schemaFileName}:`, parsedSchema);
         if (!parsedSchema || Object.keys(parsedSchema).length === 0) {
             throw new Error(`Parsed schema is empty for ${schemaFileName}`);
         }
@@ -123,14 +123,14 @@ const processSchemaFile = async (schemaPath, config) => {
         // Generate the output file name (e.g., location.yaml -> location.ts)
         const fileName = `${(0, string_1.toCamelCase)(schemaFileName)}.ts`;
         // Output file path
-        const outputPath = path.join(config.outputDirectory, fileName);
+        const outputPath = path.join(config.directories.output.types, fileName);
         // Remove duplicate imports (ensured by using Set, but sorting)
         const importsString = Array.from(imports).sort().join('\n');
         // Combine imports and types into the final file content
         const finalContent = `${importsString}${constants_1.IMPORTS_AND_TYPES_SEPARATOR}${typesContent}`;
         // Write all types and interfaces to the output file
         await writeFile(outputPath, finalContent);
-        logger_1.default.info(`${constants_1.FILE_GENERATED_SUCCESSFULLY}: ${schemaFileName} -> ${fileName}`);
+        logger_1.default.debug(`${constants_1.FILE_GENERATED_SUCCESSFULLY}: ${schemaFileName} -> ${fileName}`);
     }
     catch (error) {
         // Log the error but continue processing the next schema
@@ -154,7 +154,6 @@ const processSchemaFile = async (schemaPath, config) => {
  * ```
  */
 const generateTypeFiles = async (schemas, configPath) => {
-    logger_1.default.info({ configPath });
     // Load configuration from file or use default
     const config = configPath
         ? (0, configLoader_1.loadConfig)(configPath) // Load config if configPath is provided

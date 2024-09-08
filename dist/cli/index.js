@@ -29,9 +29,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runCLI = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const fileLoader_1 = require("../core/fileLoader");
+const logger_1 = __importDefault(require("../utils/logger"));
 const typeGenerator_1 = require("../core/typeGenerator");
-const logger_1 = __importDefault(require("../shared/logger"));
+const apiParser_1 = require("../core/apiParser");
+const parameterParser_1 = require("../core/parameterParser");
+const file_1 = require("../core/file");
 /**
  * Loads JSON configuration from the root directory.
  *
@@ -41,7 +43,6 @@ const logger_1 = __importDefault(require("../shared/logger"));
  */
 const loadJsonConfig = (configPath) => {
     try {
-        // Ensure the config file is being read from the root directory if no path is provided
         const resolvedConfigPath = configPath
             ? path.resolve(process.cwd(), configPath)
             : path.resolve(process.cwd(), 'oas2ts.config.json');
@@ -60,11 +61,25 @@ const runCLI = () => {
     try {
         // Load configuration from JSON in root directory or specified path
         const config = loadJsonConfig();
-        // Load schema files from the specified directory in config
-        const schemas = (0, fileLoader_1.loadFiles)(config.schemaDirectory);
-        // Generate types for the loaded schema files and output to the directory in config
+        const schemasDir = config.directories.input.schemas;
+        const apiModelDir = config.directories.input.apiModels;
+        const apiOutputDir = config.directories.output.apiModels;
+        const typesDir = config.directories.output.types;
+        const parameterInputDir = config.directories.input.parameters; // New input directory for parameters
+        const parameterOutputDir = config.directories.output.parameters; // New output directory for parameters
+        // Step 1: Generate types for parameters
+        logger_1.default.info('Generating types for parameters...');
+        (0, parameterParser_1.parseParameterFiles)(parameterInputDir, parameterOutputDir);
+        logger_1.default.info('Parameter types generated successfully');
+        // Step 2: Generate types for schemas
+        logger_1.default.info('Generating types for schemas...');
+        const schemas = (0, file_1.loadFiles)(schemasDir);
         (0, typeGenerator_1.generateTypeFiles)(schemas, './oas2ts.config.json');
-        logger_1.default.info('CLI executed successfully');
+        logger_1.default.info('Schema types generated successfully');
+        // Step 3: Load API model files and generate corresponding types
+        logger_1.default.info('Loading API model files...');
+        (0, apiParser_1.parseApiModels)(apiModelDir, apiOutputDir, typesDir, parameterOutputDir);
+        logger_1.default.info('API models parsed and types generated successfully');
     }
     catch (error) {
         logger_1.default.error('Error executing CLI', error);

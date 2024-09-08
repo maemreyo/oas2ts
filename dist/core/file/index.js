@@ -26,23 +26,46 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseSchema = void 0;
-const yaml = __importStar(require("js-yaml"));
+exports.writeToFile = exports.loadFiles = void 0;
 const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const logger_1 = __importDefault(require("../../utils/logger"));
-// Parse the schema from a YAML or JSON file
-const parseSchema = (filePath) => {
+/**
+ * Loads all files recursively from a directory.
+ *
+ * @param dirPath - The directory path to load files from.
+ * @returns An array of file paths.
+ */
+const loadFiles = (dirPath) => {
+    let fileList = [];
     try {
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const schema = filePath.endsWith('.yaml') || filePath.endsWith('.yml')
-            ? yaml.load(fileContent)
-            : JSON.parse(fileContent);
-        logger_1.default.info('Schema parsed successfully', filePath);
-        return schema;
+        const items = fs.readdirSync(dirPath);
+        items.forEach((item) => {
+            const fullPath = path.join(dirPath, item);
+            // Check if the item is a directory or a file
+            const stat = fs.statSync(fullPath);
+            if (stat.isDirectory()) {
+                // Recursively load files from the subdirectory
+                fileList = fileList.concat((0, exports.loadFiles)(fullPath));
+            }
+            else if (stat.isFile()) {
+                fileList.push(fullPath);
+            }
+        });
     }
     catch (error) {
-        logger_1.default.error('Error parsing schema from file', filePath, error);
-        throw new Error(`Failed to parse schema from ${filePath}`);
+        logger_1.default.error(`Error reading directory: ${dirPath}`, error);
     }
+    return fileList;
 };
-exports.parseSchema = parseSchema;
+exports.loadFiles = loadFiles;
+/**
+ * Writes the content to the specified file.
+ *
+ * @param filePath - The path of the file to write.
+ * @param content - The content to be written.
+ */
+const writeToFile = (filePath, content) => {
+    fs.writeFileSync(filePath, content, 'utf8');
+};
+exports.writeToFile = writeToFile;
