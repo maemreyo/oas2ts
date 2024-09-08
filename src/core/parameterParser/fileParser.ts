@@ -3,8 +3,9 @@ import logger from '../../utils/logger';
 import { Parameter } from './types';
 import { readYamlFileContent, parseYamlFile } from '../yaml';
 import { writeToFile, loadFiles } from '../file';
-import { ensureDirectoryExists, toPascalCase } from '../../utils/string';
+import { toPascalCase } from '../../utils/string';
 import { generateParameterType } from './typeGenerator';
+import { ensureDirectoryExists } from '../../utils/directory';
 
 /**
  * Parses parameter files and generates TypeScript types for them.

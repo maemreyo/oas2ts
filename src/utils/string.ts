@@ -1,6 +1,3 @@
-import * as fs from 'fs';
-import logger from './logger';
-
 // Indent a string by a specified level (number of spaces)
 export const indentString = (str: string, indentLevel: number): string => {
   const indent = ' '.repeat(indentLevel);
@@ -12,18 +9,6 @@ export const toCamelCase = (str: string): string => {
   return str.replace(/([-_][a-z])/g, (group) =>
     group.toUpperCase().replace('-', '').replace('_', ''),
   );
-};
-
-/**
- * Ensures that a directory exists. If not, creates it recursively.
- *
- * @param dirPath - The path of the directory to check or create.
- */
-export const ensureDirectoryExists = (dirPath: string): void => {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-    logger.info(`Created directory: ${dirPath}`);
-  }
 };
 
 /**

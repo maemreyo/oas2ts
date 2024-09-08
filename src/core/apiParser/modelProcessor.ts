@@ -3,16 +3,14 @@ import { parseApiFile } from './fileParser';
 import { extractSuccessResponseRef } from './responseExtractor';
 import { extractParameterRefs } from './parameterExtractor';
 import { generateTypeForSuccessResponse } from './typeGenerator';
-import {
-  ensureDirectoryExists,
-  toPascalCaseAndRemoveDashes,
-} from '../../utils/string';
+import { toPascalCaseAndRemoveDashes } from '../../utils/string';
 import * as path from 'path';
 import * as fs from 'fs';
 import logger from '../../utils/logger';
 import { mapParamImports, mapParamSignatures } from './paramMapper';
 import { resolveResponseType, resolveFileName } from './refResolver';
 import { resolveOutputFolder } from './outputHelper';
+import { ensureDirectoryExists } from '../../utils/directory';
 
 /**
  * Processes a single API file.
