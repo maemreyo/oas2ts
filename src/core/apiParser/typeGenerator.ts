@@ -1,14 +1,9 @@
 import * as path from 'path';
-import logger from '../../utils/logger';
-import {
-  toCamelCaseParam,
-  toPascalCaseAndRemoveDashes,
-} from '../../utils/string';
+import { toPascalCaseAndRemoveDashes } from '../../utils/string';
 import { findTypeInDirectory } from '../../utils/typeHelpers';
 
 /**
- * Generates the TypeScript type definition for a success response, converting operationId and parameters.
- * Also generates import statements for the response type and parameters, with proper relative path calculation.
+ * Generates the TypeScript type definition for a success response.
  *
  * @param operationId - The operation ID of the API endpoint.
  * @param parameters - The list of parameters with their TypeScript types.
@@ -37,32 +32,81 @@ export const generateTypeForSuccessResponse = (
   const functionName = `${toPascalCaseAndRemoveDashes(operationId)}Request`;
   const paramList = parameters.join(', ');
 
-  // Calculate the relative path from API output directory to the types directory
+  const responseTypeImport = createResponseTypeImport(
+    apiOutputDir,
+    typesDir,
+    filename,
+    responseType,
+  );
+  const parameterImportsString = createParameterImports(
+    apiOutputDir,
+    parametersDir,
+    parameterImports,
+  );
+
+  return `${responseTypeImport}\n${parameterImportsString}\n\nexport type ${functionName} = (${paramList}) => Promise<${responseType}>;`;
+};
+
+/**
+ * Creates the import statement for the response type.
+ */
+const createResponseTypeImport = (
+  apiOutputDir: string,
+  typesDir: string,
+  filename: string,
+  responseType: string,
+): string => {
   const relativeTypesPath = path.relative(
     apiOutputDir,
     path.join(typesDir, `${filename}.ts`),
   );
+  return `import { ${responseType} } from '${normalizePath(relativeTypesPath)}';`;
+};
 
-  // Create the import statement for the response type
-  const importStatement = `import { ${responseType} } from '${relativeTypesPath.replace(/\\/g, '/').replace('.ts', '')}';\n`;
-  logger.info({
-    '>>>>>>>>>>>> parameterImports <<<<<<<<<<<<<': parameterImports,
-  });
-  // Create import statements for parameters, accounting for those defined in a larger file
-  const parameterImportStatements = parameterImports
+/**
+ * Creates the import statements for parameters.
+ */
+const createParameterImports = (
+  apiOutputDir: string,
+  parametersDir: string,
+  parameterImports: {
+    paramName: string;
+    paramType: string;
+    importPath: string;
+  }[],
+): string => {
+  return parameterImports
     .map(({ paramType }) => {
-      const sourceFileInfo = findTypeInDirectory(parametersDir, paramType);
-      const paramFilePath = sourceFileInfo
-        ? `${sourceFileInfo.fileName}.ts`
-        : `${paramType}.ts`; // If the type is defined in a larger file, use the larger file
-      const relativeParamsPath = path.relative(
+      const importPath = findParameterImportPath(
+        paramType,
         apiOutputDir,
-        path.join(parametersDir, paramFilePath),
-      ); // Adjust path accordingly
-      return `import { ${paramType} } from '${relativeParamsPath.replace(/\\/g, '/').replace('.ts', '')}';`;
+        parametersDir,
+      );
+      return `import { ${paramType} } from '${importPath}';`;
     })
     .join('\n');
+};
 
-  // Return the final TypeScript type definition with a blank line after imports
-  return `${importStatement}${parameterImportStatements}\n\nexport type ${functionName} = (${paramList}) => Promise<${responseType}>;`;
+/**
+ * Finds the correct import path for a parameter type.
+ */
+const findParameterImportPath = (
+  paramType: string,
+  apiOutputDir: string,
+  parametersDir: string,
+): string => {
+  const sourceFileInfo = findTypeInDirectory(parametersDir, paramType);
+  const paramFilePath = sourceFileInfo
+    ? path.join(parametersDir, `${sourceFileInfo.fileName}.ts`)
+    : path.join(parametersDir, `${paramType}.ts`);
+
+  const relativeParamsPath = path.relative(apiOutputDir, paramFilePath);
+  return normalizePath(relativeParamsPath);
+};
+
+/**
+ * Normalizes file path for TypeScript imports (removes .ts extension and handles Windows paths).
+ */
+const normalizePath = (filePath: string): string => {
+  return filePath.replace(/\\/g, '/').replace('.ts', '');
 };
