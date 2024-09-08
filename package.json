@@ -1,6 +1,6 @@
 {
   "name": "oas2ts",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A Node.js tool that converts OpenAPI YAML/JSON files into TypeScript types and interfaces, with support for recursive `$ref` resolution and customizable file structure.",
   "main": "dist/index.js",
   "types": "dist/types/index.d.ts",
