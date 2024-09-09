@@ -13,7 +13,7 @@ export const parseApiFile = (filePath: string): any => {
   try {
     const ext = path.extname(filePath).toLowerCase();
     const fileContent = fs.readFileSync(filePath, 'utf8');
-
+    // logger.info({ fileContent });
     if (ext === '.yaml' || ext === '.yml') {
       return yaml.load(fileContent);
     } else if (ext === '.json') {
