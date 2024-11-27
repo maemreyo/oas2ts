@@ -68,7 +68,7 @@ const generateInterface = (schemaName, schema, imports, fileName) => {
  */
 const generateEnum = (schemaName, schema, fileName) => {
     const enumValues = schema.enum
-        .map((val) => `  ${(0, string_1.capitalize)(val)} = '${val}'`)
+        .map((val) => `  ${(0, string_1.toPascalCase)(val)} = '${val}'`)
         .join(',\n');
     const enumName = schemaName ? (0, string_1.capitalize)(schemaName) : (0, string_1.capitalize)(fileName);
     return `export enum ${enumName} {\n${enumValues}\n}\n`;

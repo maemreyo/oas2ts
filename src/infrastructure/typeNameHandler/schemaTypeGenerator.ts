@@ -1,6 +1,6 @@
 import { generateProperties } from './propertyHandler';
 import { resolveRefType, resolveType } from './typeResolver';
-import { capitalize } from '../../utils/string';
+import { capitalize, toPascalCase } from '../../utils/string';
 import { ObjectProperty, SchemaProperty, EnumProperty } from './types';
 import logger from '../../utils/logger';
 
@@ -83,7 +83,7 @@ const generateEnum = (
   fileName: string,
 ): string => {
   const enumValues = schema.enum
-    .map((val: string) => `  ${capitalize(val)} = '${val}'`)
+    .map((val: string) => `  ${toPascalCase(val)} = '${val}'`)
     .join(',\n');
 
   const enumName = schemaName ? capitalize(schemaName) : capitalize(fileName);

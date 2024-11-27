@@ -9,6 +9,12 @@ exports.extractSuccessResponseRef = void 0;
  */
 const extractSuccessResponseRef = (responses) => {
     const successResponse = responses['200'];
+    // logger.info({ '>>>>>> successResponse <<<<<<':     successResponse     } );
+    // Case 1: Success response has a $ref directly (e.g., "200": { $ref: "../components/responses/200.yaml" })
+    if (successResponse && successResponse.$ref) {
+        return successResponse.$ref;
+    }
+    // Case 2: Success response has content with application/json schema
     if (successResponse &&
         successResponse.content &&
         successResponse.content['application/json']) {
